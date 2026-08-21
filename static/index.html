@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Mantención de Grúas</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="img/app-icon-192.png" />
+  <link rel="apple-touch-icon" href="img/app-icon-192.png" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-fila">
+      <span class="logo">Mantención Grúas</span>
+      <div class="usuario-box">
+        <span id="usuario"></span>
+        <button id="btnSalir" class="btn mini">Salir</button>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="#/">Inicio</a>
+      <a href="#/nuevo">Nuevo registro</a>
+      <a href="#/importar">Importar</a>
+      <a href="#/catalogo">Catálogo</a>
+      <a href="#/compartir">Compartir</a>
+    </nav>
+  </header>
+
+  <main id="vista"></main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
+  <script src="js/firebase-config.js"></script>
+  <script>firebase.initializeApp(firebaseConfig);</script>
+  <script src="js/catalogo-inicial.js"></script>
+  <script src="js/mapping.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/gruas.js"></script>
+  <script src="js/mantenciones.js"></script>
+  <script src="js/importar.js"></script>
+  <script src="js/qrcode.min.js"></script>
+  <script src="js/compartir.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

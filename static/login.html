@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ingresar · Mantención de Grúas</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="img/app-icon-192.png" />
+</head>
+<body class="login-body">
+  <div class="login-card">
+    <h1>Mantención Grúas</h1>
+    <form id="frmLogin">
+      <label>Email
+        <input type="email" id="loginEmail" required autocomplete="username" />
+      </label>
+      <label>Contraseña
+        <input type="password" id="loginPass" required autocomplete="current-password" />
+      </label>
+      <button class="btn primario ancho" type="submit">Ingresar</button>
+      <p id="loginError" class="aviso"></p>
+    </form>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script>firebase.initializeApp(firebaseConfig);</script>
+  <script src="js/auth.js"></script>
+  <script>
+    document.getElementById('frmLogin').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const err = document.getElementById('loginError');
+      try {
+        await Auth.login(
+          document.getElementById('loginEmail').value,
+          document.getElementById('loginPass').value
+        );
+        location.href = 'index.html';
+      } catch (e) {
+        err.textContent = 'Credenciales incorrectas: ' + e.message;
+      }
+    });
+  </script>
+</body>
+</html>
