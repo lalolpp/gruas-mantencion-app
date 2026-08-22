@@ -130,7 +130,8 @@ function pdfContenedor(html) {
     cont.id = 'pdf-contenedor';
     document.body.appendChild(cont);
   }
-  cont.style.cssText = 'position:fixed;left:0;top:0;width:740px;background:#fff;z-index:99999;box-shadow:0 0 30px rgba(0,0,0,.5);padding:12px;max-height:none;overflow:visible';
+  window.scrollTo(0, 0);
+  cont.style.cssText = 'position:absolute;left:0;top:0;width:740px;background:#fff;z-index:99999;box-shadow:0 0 30px rgba(0,0,0,.5);padding:12px';
   cont.innerHTML = html;
   return cont;
 }
@@ -146,7 +147,7 @@ function pdfGuardar(cont, filename) {
     margin: [10, 10, 10, 10],
     filename,
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, scrollY: -window.scrollY },
+    html2canvas: { scale: 2, useCORS: true },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
     pagebreak: { mode: ['css', 'legacy'] }
   }).from(cont).save().then(ocultar).catch(err => {
