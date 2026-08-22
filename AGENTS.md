@@ -28,7 +28,7 @@ Reemplaza el Excel `mantenciones gruas.xlsx`. Documentación técnica ampliada e
 - [x] Nuevo registro manual mobile-friendly
 - [x] Importador Excel con mapeo hoja→equipo editable, vista previa y carga por lotes de 400
 - [x] Vista "Compartir": QR del enlace, copiar/compartir, botón instalar PWA
-- [ ] **PENDIENTE: importar registros históricos** del `mantenciones gruas.xlsx` (usuario aún no entrega la ruta del archivo). Mientras tanto el semáforo muestra gris "Sin datos"
+- [x] **801 registros históricos importados** (agosto 2026): script Node en `%TEMP%\opencode\importar-historial.mjs` parsea `Gamalier_Gruas_prompt_OpenCode.md` y sube vía REST API con token OAuth del CLI. Conteos verificados por equipo (G1:61 G2:47 G3:60 G4:64 G5:59 G6:68 G7:87 G8:83 G9:77 G10:33 G11:24 G12:63 G13:50 G14:9 T01:3 T02:10 T03:3). Fechas-typo corregidas (GRUA1 f43, GRUA5 f24/f60, GRUA9 f19/f158, grua13 f2/f122); filas sin fecha fusionadas como continuación; horómetros decimales como doubleValue
 - [ ] Opcional: cambiar contraseña del usuario desde consola Firebase
 
 ## Comandos útiles
