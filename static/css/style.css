@@ -136,6 +136,21 @@ input, select, textarea {
 .badge.rojo { background: #fdeaea; color: var(--rojo); }
 .badge.gris { background: #e8ebef; color: var(--muted); }
 
+.chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 4px; }
+.chip {
+  font-size: .68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.chip.marca-toyota { background: #fdeeda; color: #b45309; border-color: #f3cfa3; }
+.chip.marca-linde { background: #e3edf7; color: #1e4e79; border-color: #bcd3e8; }
+.chip.marca-otra { background: #eceff3; color: #5a6470; border-color: #d6dbe1; }
+.chip.tipo-electrica { background: #e3f2e5; color: #1e7d34; border-color: #bce0c2; }
+.chip.tipo-combustion { background: #fdeaea; color: #a63a3a; border-color: #efc3c3; }
+
 .ficha {
   background: #fff;
   border: 1px solid var(--borde);

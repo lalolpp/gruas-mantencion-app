@@ -21,6 +21,17 @@ function esc(s) {
   return String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
+function chipsEquipo(e) {
+  const marca = (e.marca || '').toLowerCase();
+  const marcaCls = marca.includes('toyota') ? 'marca-toyota' : marca.includes('linde') ? 'marca-linde' : 'marca-otra';
+  const esElec = (e.tipo || '').toLowerCase().includes('electr');
+  const tipoCls = esElec ? 'tipo-electrica' : 'tipo-combustion';
+  const tipoTxt = esElec ? 'Eléctrica' : 'Combustión';
+  return `<span class="chip ${marcaCls}">${esc(e.marca || '—')}</span>` +
+         `<span class="chip ${tipoCls}">${tipoTxt}</span>` +
+         (e.detalle ? `<span class="chip marca-otra">${esc(e.detalle)}</span>` : '');
+}
+
 Vistas.inicio = async el => {
   el.innerHTML = '<p class="muted">Cargando...</p>';
   const [equipos, todosRegistros] = await Promise.all([Equipos.list(), Registros.todos()]);
@@ -58,7 +69,7 @@ Vistas.inicio = async el => {
             <span class="codigo">${esc(e.codigo)}</span>
             <span class="badge ${s.clase}">${esc(s.texto)}</span>
           </div>
-          <div class="card-sub">${esc(e.marca)} · ${esc(e.tipo)}${e.detalle ? ' · ' + esc(e.detalle) : ''}</div>
+          <div class="card-sub chips">${chipsEquipo(e)}</div>
           <div class="card-meta">${esc(e.dpto || '')}${e.operador ? ' · ' + esc(e.operador) : ''}</div>
           <div class="card-meta">Horómetro: <b>${s.horometro != null ? s.horometro.toLocaleString('es-CL') : '—'}</b></div>
         </a>`;
@@ -87,7 +98,8 @@ Vistas.equipo = async (el, codigo) => {
     <a href="#/" class="volver">&larr; Volver</a>
     <div class="ficha">
       <div>
-        <h2>${esc(equipo.codigo)} <small>${esc(equipo.marca)} ${esc(equipo.tipo)}</small></h2>
+        <h2>${esc(equipo.codigo)}</h2>
+        <div class="chips" style="margin-top:2px">${chipsEquipo(equipo)}</div>
         <p class="card-meta">
           Serie: ${esc(equipo.n_serie || '—')} · Depto: ${esc(equipo.dpto || '—')}<br>
           Operador: ${esc(equipo.operador || '—')} · Intervalo: cada ${esc(equipo.intervaloHoras || '—')} h

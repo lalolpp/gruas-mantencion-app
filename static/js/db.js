@@ -1,9 +1,19 @@
 const db = firebase.firestore();
 
+function cmpCodigo(a, b) {
+  const m1 = String(a).match(/^([A-Za-z]+)(\d+)$/), m2 = String(b).match(/^([A-Za-z]+)(\d+)$/);
+  if (m1 && m2) {
+    const p = m1[1].localeCompare(m2[1]);
+    return p || (+m1[2] - +m2[2]);
+  }
+  return String(a).localeCompare(String(b));
+}
+
 const Equipos = {
   async list() {
     const snap = await db.collection('equipos').orderBy('codigo').get();
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => cmpCodigo(a.codigo, b.codigo));
   },
   async byCodigo(codigo) {
     const snap = await db.collection('equipos').where('codigo', '==', codigo).limit(1).get();
