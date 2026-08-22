@@ -1,5 +1,31 @@
-const TIPOS = ['revision', 'preventiva', 'correctiva', 'recambio', 'accesorios', 'otra'];
+const TIPOS = ['revision', 'inspeccion', 'preventiva', 'correctiva', 'recambio', 'accesorios', 'otra'];
 const EMPRESAS_SUGERIDAS = ['ACAM', 'Linde', 'Farias', 'Combustronica', 'Inter Whells', 'Luis Suarez', 'Batrol', 'SKC'];
+
+function csvCelda(v) {
+  const s = v == null ? '' : String(v);
+  return '"' + s.replace(/"/g, '""') + '"';
+}
+function descargarCSV(nombre, cabeceras, filas) {
+  const lineas = [cabeceras.map(csvCelda).join(';')].concat(filas.map(f => f.map(csvCelda).join(';')));
+  const blob = new Blob(['\uFEFF' + lineas.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nombre;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 500);
+}
+const CABECERAS_AUDITORIA = ['Equipo', 'Categoria', 'Marca', 'Tipo equipo', 'N° serie', 'Depto', 'Operador', 'Estado', 'Fecha registro', 'Horometro (h)', 'Prox. mantencion (h)', 'Horas restantes', 'Tipo de mantencion', 'Empresa responsable', 'Responsable', 'Supervisor', 'Trabajos realizados', 'Elementos cambiados', 'Observaciones', 'Origen del dato'];
+function filaAuditoria(e, r) {
+  return [
+    e ? e.codigo : r.equipo,
+    e ? e.categoria || '' : '', e ? e.marca || '' : '', e ? e.tipo || '' : '', e ? e.n_serie || '' : '',
+    e ? e.dpto || '' : '', e ? e.operador || '' : '', e ? e.estado || '' : '',
+    r.fecha || '', r.horometro ?? '', r.hProx ?? '',
+    typeof r.horometro === 'number' && typeof r.hProx === 'number' ? r.hProx - r.horometro : '',
+    r.tipo || '', r.empresa || '', r.responsable || '', r.supervisor || '',
+    r.trabajos || '', r.elementos || '', r.observaciones || '', r.origen || ''
+  ];
+}
 
 function hoyISO() {
   const d = new Date();
@@ -69,7 +95,7 @@ Vistas.nuevo = async (el, equipoCodigo) => {
     const estado = $('#regEstado');
     const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
     try {
-      await Registros.add({
+      const guardado = {
         equipo: $('#rEquipo').value,
         fecha: $('#rFecha').value,
         horometro: num($('#rHorometro').value),
@@ -82,11 +108,16 @@ Vistas.nuevo = async (el, equipoCodigo) => {
         elementos: $('#rElementos').value.trim(),
         observaciones: $('#rObservaciones').value.trim(),
         origen: 'manual'
+      };
+      await Registros.add(guardado);
+      const eq = equipos.find(x => x.codigo === guardado.equipo);
+      estado.innerHTML = '<span class="ok">Guardado.</span> <button class="btn mini" id="btnExpReg" type="button">Exportar auditoria (CSV)</button>';
+      $('#btnExpReg').addEventListener('click', () => {
+        descargarCSV(`registro_${guardado.equipo}_${guardado.fecha}.csv`, CABECERAS_AUDITORIA, [filaAuditoria(eq, guardado)]);
       });
-      estado.innerHTML = '<span class="ok">Guardado.</span>';
       setTimeout(() => {
         location.hash = '#/equipo/' + $('#rEquipo').value;
-      }, 500);
+      }, 8000);
     } catch (err) {
       estado.innerHTML = `<span class="aviso">Error: ${esc(err.message)}</span>`;
     }

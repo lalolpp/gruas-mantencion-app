@@ -118,8 +118,9 @@ Vistas.equipo = async (el, codigo) => {
         <div>Próx. mantención: <b>${regs.find(r => r.hProx)?.hProx ?? '—'} h</b></div>
       </div>
     </div>
-    <div class="fila">
+    <div class="fila tres">
       <button class="btn primario" id="btnNuevoReg">+ Nuevo registro</button>
+      <button class="btn" id="btnExportHist">Exportar CSV</button>
       <button class="btn" id="btnEditar">Editar equipo</button>
     </div>
     <h3 id="histTitulo">Historial (${regs.length})</h3>
@@ -173,7 +174,11 @@ Vistas.equipo = async (el, codigo) => {
     location.hash = `#/nuevo?equipo=${encodeURIComponent(codigo)}`;
   });
 
+  $('#btnExportHist').addEventListener('click', () => {
+    descargarCSV(`historial_${codigo}.csv`, CABECERAS_AUDITORIA, regs.map(r => filaAuditoria(equipo, r)));
+  });
+
   $('#btnEditar').addEventListener('click', () => {
-    location.hash = `#/editar/${encodeURIComponent(codigo)}`;
+    location.hash = '#/editar/' + encodeURIComponent(codigo);
   });
 };
