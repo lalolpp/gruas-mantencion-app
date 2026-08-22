@@ -32,6 +32,138 @@ function hoyISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+const PDF_AZUL = '#1e3a5f';
+
+function pdfFechaHora() {
+  const ahora = new Date();
+  return [
+    ahora.toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' }),
+    ahora.toLocaleTimeString('es-CL')
+  ];
+}
+
+function pdfCabecera(fechaEmision, horaEmision) {
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid ${PDF_AZUL};padding-bottom:12px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:16px">
+        <img src="img/logo.png" style="height:70px">
+        <div>
+          <div style="font-size:.85rem;color:#666;text-transform:uppercase;letter-spacing:1px">GAMALIER GRUAS</div>
+          <div style="font-size:.8rem;color:#999">Control, Seguridad y Eficiencia</div>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:.8rem;color:#999">Fecha de Emision</div>
+        <div style="font-size:.95rem;font-weight:bold">${fechaEmision}</div>
+        <div style="font-size:.8rem;color:#666">${horaEmision}</div>
+      </div>
+    </div>`;
+}
+
+function pdfTitulo(texto) {
+  return `<div style="text-align:center;margin-bottom:20px">
+    <h2 style="margin:0;color:${PDF_AZUL};text-transform:uppercase;letter-spacing:2px">${texto}</h2></div>`;
+}
+
+function pdfFilaDato(a, b, c, d) {
+  return `<tr>
+    <td style="padding:6px 10px;border:1px solid #ddd;width:25%"><strong>${a}</strong></td>
+    <td style="padding:6px 10px;border:1px solid #ddd;width:25%">${esc(b)}</td>
+    <td style="padding:6px 10px;border:1px solid #ddd;width:25%"><strong>${c}</strong></td>
+    <td style="padding:6px 10px;border:1px solid #ddd;width:25%">${esc(d)}</td></tr>`;
+}
+
+function pdfSeccion(titulo, texto) {
+  return `
+    <div style="margin-top:14px;page-break-inside:avoid">
+      <div style="background:${PDF_AZUL};color:#fff;padding:6px 10px;font-weight:bold;font-size:.9rem">${titulo}</div>
+      <div style="border:1px solid #ddd;border-top:none;padding:10px;font-size:.9rem;white-space:pre-wrap;min-height:34px">${esc(texto || '—')}</div>
+    </div>`;
+}
+
+function pdfBloqueRegistro(reg, eq) {
+  let html = `<table style="width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:14px">
+    <thead><tr style="background:${PDF_AZUL};color:#fff"><th colspan="4" style="padding:6px 10px;text-align:left">FICHA DEL EQUIPO</th></tr></thead><tbody>` +
+    pdfFilaDato('Codigo', eq ? eq.codigo : reg.equipo, 'Marca', eq ? eq.marca : '') +
+    pdfFilaDato('Tipo equipo', eq ? eq.tipo : '', 'N° de serie', eq ? eq.n_serie : '') +
+    pdfFilaDato('Depto / sector', eq ? eq.dpto : '', 'Operador', eq ? eq.operador : '') +
+    pdfFilaDato('Estado', eq ? eq.estado : '', 'Intervalo mantencion', eq && eq.intervaloHoras ? eq.intervaloHoras + ' h' : '') +
+    `</tbody></table>`;
+
+  const restantes = typeof reg.horometro === 'number' && typeof reg.hProx === 'number' ? String(reg.hProx - reg.horometro) + ' h' : '';
+  html += `<table style="width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:6px">
+    <thead><tr style="background:${PDF_AZUL};color:#fff"><th colspan="4" style="padding:6px 10px;text-align:left">DATOS DE LA MANTENCION</th></tr></thead><tbody>` +
+    pdfFilaDato('Fecha registro', reg.fecha || '', 'Horometro', reg.horometro != null ? reg.horometro.toLocaleString('es-CL') + ' h' : '') +
+    pdfFilaDato('Prox. mantencion', reg.hProx != null ? reg.hProx.toLocaleString('es-CL') + ' h' : '', 'Horas restantes', restantes) +
+    pdfFilaDato('Tipo de mantencion', reg.tipo || '', 'Empresa responsable', reg.empresa || '') +
+    pdfFilaDato('Responsable', reg.responsable || '', 'Supervisor', reg.supervisor || '') +
+    `</tbody></table>`;
+
+  html += pdfSeccion('TRABAJOS REALIZADOS', reg.trabajos);
+  html += pdfSeccion('ELEMENTOS CAMBIADOS', reg.elementos);
+  html += pdfSeccion('OBSERVACIONES', reg.observaciones);
+
+  const [f] = pdfFechaHora();
+  html += `
+    <div style="margin-top:32px;page-break-inside:avoid">
+      <div style="border-top:2px solid ${PDF_AZUL};padding-top:12px;display:flex;justify-content:space-between">
+        <div style="width:45%">
+          <div style="font-size:.85rem;font-weight:bold;color:${PDF_AZUL};margin-bottom:40px;border-bottom:1px solid #333;padding-bottom:4px">Responsable Ejecutor (Firma)</div>
+          <div style="font-size:.75rem;color:#666">Nombre: ${esc(reg.responsable || '___________________________')}</div>
+        </div>
+        <div style="width:45%">
+          <div style="font-size:.85rem;font-weight:bold;color:${PDF_AZUL};margin-bottom:40px;border-bottom:1px solid #333;padding-bottom:4px">Supervisor / Aprobador (Firma)</div>
+          <div style="font-size:.75rem;color:#666">Nombre: ${esc(reg.supervisor || '___________________________')}</div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:24px;font-size:.7rem;color:#999;border-top:1px solid #eee;padding-top:6px">
+        Documento generado por GAMALIER GRUAS | ${f}
+      </div>
+    </div>`;
+  return html;
+}
+
+function pdfContenedor(html) {
+  let cont = document.getElementById('pdf-contenedor');
+  if (!cont) {
+    cont = document.createElement('div');
+    cont.id = 'pdf-contenedor';
+    document.body.appendChild(cont);
+  }
+  cont.style.cssText = 'position:fixed;left:-10000px;top:0;width:740px;background:#fff;padding:12px';
+  cont.innerHTML = html;
+  return cont;
+}
+
+function pdfGuardar(cont, filename) {
+  html2pdf().set({
+    margin: [10, 10, 10, 10],
+    filename,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['css', 'legacy'] }
+  }).from(cont).save();
+}
+
+function generarPDFRegistro(reg, eq) {
+  const [f, h] = pdfFechaHora();
+  const cont = pdfContenedor('<div style="font-family:Arial,Helvetica,sans-serif;color:#333">' +
+    pdfCabecera(f, h) + pdfTitulo('Registro de Mantencion') + pdfBloqueRegistro(reg, eq) + '</div>');
+  pdfGuardar(cont, `registro_${reg.equipo}_${reg.fecha}.pdf`);
+}
+
+function generarPDFHistorial(nombreArchivo, tituloIntro, pares) {
+  const [f, h] = pdfFechaHora();
+  const bloques = pares.map((p, i) =>
+    '<div style="page-break-before:' + (i ? 'always' : 'auto') + '">' +
+    pdfTitulo(`Registro ${i + 1} · ${esc(p.reg.equipo)}${p.reg.fecha ? ' — ' + esc(p.reg.fecha) : ''}`) +
+    pdfBloqueRegistro(p.reg, p.eq) + '</div>').join('');
+  const cont = pdfContenedor('<div style="font-family:Arial,Helvetica,sans-serif;color:#333">' +
+    pdfCabecera(f, h) + pdfTitulo(tituloIntro) + bloques + '</div>');
+  pdfGuardar(cont, nombreArchivo);
+}
+
 Vistas.nuevo = async (el, equipoCodigo) => {
   el.innerHTML = '<p class="muted">Cargando...</p>';
   const equipos = await Equipos.list();
@@ -111,10 +243,8 @@ Vistas.nuevo = async (el, equipoCodigo) => {
       };
       await Registros.add(guardado);
       const eq = equipos.find(x => x.codigo === guardado.equipo);
-      estado.innerHTML = '<span class="ok">Guardado.</span> <button class="btn mini" id="btnExpReg" type="button">Exportar auditoria (CSV)</button>';
-      $('#btnExpReg').addEventListener('click', () => {
-        descargarCSV(`registro_${guardado.equipo}_${guardado.fecha}.csv`, CABECERAS_AUDITORIA, [filaAuditoria(eq, guardado)]);
-      });
+      estado.innerHTML = '<span class="ok">Guardado.</span> <button class="btn mini" id="btnPdfReg" type="button">Descargar PDF</button>';
+      $('#btnPdfReg').addEventListener('click', () => generarPDFRegistro(guardado, eq));
       setTimeout(() => {
         location.hash = '#/equipo/' + $('#rEquipo').value;
       }, 8000);

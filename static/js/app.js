@@ -37,6 +37,8 @@ async function navegar() {
       await Vistas.editar(vista, decodeURIComponent(ruta.split('/')[2]));
     } else if (ruta === '#/compartir') {
       await Vistas.compartir(vista);
+    } else if (ruta === '#/exportar') {
+      await Vistas.exportar(vista);
     } else {
       vista.innerHTML = '<p>Vista no encontrada. <a href="#/">Ir al inicio</a></p>';
     }
