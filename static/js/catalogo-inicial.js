@@ -12,7 +12,7 @@ const EQUIPOS_INICIALES = [
   { codigo: 'G11', categoria: 'grua', marca: 'Yale', tipo: 'combustion', n_serie: 'C812R01791D', intervaloHoras: 250, dpto: '', operador: '', estado: 'vendida', detalle: 'Vendida, solo historial' },
   { codigo: 'G12', categoria: 'grua', marca: 'Linde', tipo: 'electrica', n_serie: 'H2X386B07990', intervaloHoras: 500, dpto: 'Frío', operador: 'Yuri', estado: 'operativa' },
   { codigo: 'G13', categoria: 'grua', marca: 'Toyota', tipo: 'combustion', n_serie: '73894', intervaloHoras: 250, dpto: '', operador: '', estado: 'operativa' },
-  { codigo: 'G14', categoria: 'grua', marca: 'Linde', tipo: 'electrica', n_serie: 'H2Y386M01382', intervaloHoras: 500, dpto: 'Frío', operador: '', estado: 'operativa', detalle: 'La hoja del Excel dice G15 por error; es G14' },
+  { codigo: 'G14', categoria: 'grua', marca: 'Linde', tipo: 'electrica', n_serie: 'H2Y386M01382', intervaloHoras: 500, dpto: 'Frío', operador: '', estado: 'operativa' },
   { codigo: 'T01', categoria: 'traspaleta', marca: 'Yale', tipo: 'electrica', n_serie: '', intervaloHoras: 500, dpto: 'Andén Comercial', operador: '', estado: 'operativa' },
   { codigo: 'T02', categoria: 'traspaleta', marca: 'Linde', tipo: 'electrica', n_serie: 'W4X131X00445', intervaloHoras: 500, dpto: '', operador: '', estado: 'operativa' },
   { codigo: 'T03', categoria: 'traspaleta', marca: 'Linde', tipo: 'electrica', n_serie: 'W4X131Y08248', intervaloHoras: 500, dpto: 'Frío', operador: '', estado: 'operativa' }

@@ -43,19 +43,26 @@ Vistas.inicio = async el => {
   el.innerHTML = `
     <div class="filtros">
       <input id="fBusca" placeholder="Buscar código, marca, depto..." />
-      <select id="fCategoria">
-        <option value="">Todos</option>
-        <option value="grua">Grúas</option>
-        <option value="traspaleta">Traspaletas</option>
+      <select id="fFiltro">
+        <option value="">Todo</option>
+        <option value="cat:grua">Grúas</option>
+        <option value="cat:traspaleta">Traspaletas</option>
+        <option value="marca:Linde">Linde</option>
+        <option value="marca:Toyota">Toyota</option>
       </select>
     </div>
     <div id="grilla" class="grilla"></div>`;
 
   function pintar() {
     const busca = $('#fBusca').value.toLowerCase();
-    const cat = $('#fCategoria').value;
+    const f = $('#fFiltro').value;
+    const [tipoF, valF] = f.split(':');
     const tarjetas = equipos
-      .filter(e => !cat || e.categoria === cat)
+      .filter(e => {
+        if (!f) return true;
+        if (tipoF === 'cat') return e.categoria === valF;
+        return (e.marca || '').toLowerCase() === valF.toLowerCase();
+      })
       .filter(e => {
         if (!busca) return true;
         return [e.codigo, e.marca, e.tipo, e.dpto, e.operador, e.n_serie]
@@ -78,7 +85,7 @@ Vistas.inicio = async el => {
   }
 
   $('#fBusca').addEventListener('input', pintar);
-  $('#fCategoria').addEventListener('change', pintar);
+  $('#fFiltro').addEventListener('change', pintar);
   pintar();
 };
 
