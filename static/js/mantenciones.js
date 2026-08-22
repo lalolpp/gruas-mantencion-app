@@ -130,20 +130,30 @@ function pdfContenedor(html) {
     cont.id = 'pdf-contenedor';
     document.body.appendChild(cont);
   }
-  cont.style.cssText = 'position:absolute;left:0;top:0;width:740px;background:#fff;z-index:-1';
+  cont.style.cssText = 'position:fixed;left:0;top:0;width:740px;background:#fff;z-index:99999;box-shadow:0 0 30px rgba(0,0,0,.5);padding:12px;max-height:none;overflow:visible';
   cont.innerHTML = html;
   return cont;
 }
 
 function pdfGuardar(cont, filename) {
+  const ocultar = () => { cont.style.display = 'none'; };
+  if (typeof html2pdf !== 'function') {
+    ocultar();
+    alert('No se pudo cargar el generador de PDF (revisa tu conexion)');
+    return;
+  }
   html2pdf().set({
     margin: [10, 10, 10, 10],
     filename,
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true },
+    html2canvas: { scale: 2, useCORS: true, scrollY: -window.scrollY },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
     pagebreak: { mode: ['css', 'legacy'] }
-  }).from(cont).save();
+  }).from(cont).save().then(ocultar).catch(err => {
+    ocultar();
+    console.error('PDF error:', err);
+    alert('Error al generar PDF: ' + err.message);
+  });
 }
 
 function generarPDFRegistro(reg, eq) {
