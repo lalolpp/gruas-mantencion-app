@@ -130,7 +130,7 @@ function pdfContenedor(html) {
     cont.id = 'pdf-contenedor';
     document.body.appendChild(cont);
   }
-  cont.style.cssText = 'position:fixed;left:-10000px;top:0;width:740px;background:#fff;padding:12px';
+  cont.style.cssText = 'position:absolute;left:0;top:0;width:740px;background:#fff;z-index:-1';
   cont.innerHTML = html;
   return cont;
 }
