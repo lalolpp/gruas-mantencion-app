@@ -1,6 +1,4 @@
-window.Vistas = window.Vistas || {};
-const Vistas = window.Vistas;
-
+// Vistas se declara una sola vez en gruas.js; aqui solo agregamos la vista
 Vistas.exportar = async el => {
   el.innerHTML = '<p class="muted">Cargando...</p>';
   const equipos = await Equipos.list();

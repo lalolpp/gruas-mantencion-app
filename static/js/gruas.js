@@ -129,14 +129,19 @@ Vistas.equipo = async (el, codigo) => {
       <input type="date" id="hHasta" title="Hasta" />
       <input id="hTexto" placeholder="Filtrar repuesto, trabajo, empresa..." />
     </div>
+    <div style="margin-bottom:10px">
+      <button class="btn mini" id="btnExpSel" disabled>Exportar seleccionadas (PDF)</button>
+      <label class="check" style="display:inline;margin-left:8px"><input type="checkbox" id="hTodos" /> Seleccionar todo</label>
+    </div>
     <div class="tabla-wrap">
       <table class="tabla">
-        <thead><tr><th>Fecha</th><th>Horóm.</th><th>H.próx</th><th>Tipo</th><th>Empresa</th><th>Responsable</th><th>Detalle</th></tr></thead>
+        <thead><tr><th></th><th>Fecha</th><th>Horóm.</th><th>H.próx</th><th>Tipo</th><th>Empresa</th><th>Responsable</th><th>Detalle</th></tr></thead>
         <tbody id="histBody"></tbody>
       </table>
     </div>`;
 
-  const filaHTML = r => `<tr>
+  const filaHTML = (r, i) => `<tr>
+            <td><input type="checkbox" class="hSel" data-i="${i}" /></td>
             <td>${esc(r.fecha)}</td>
             <td>${r.horometro != null ? r.horometro.toLocaleString('es-CL') : '—'}</td>
             <td>${r.hProx != null ? r.hProx.toLocaleString('es-CL') : '—'}</td>
@@ -161,9 +166,32 @@ Vistas.equipo = async (el, codigo) => {
   function pintarHistorial() {
     const visibles = regs.filter(pasa);
     $('#histTitulo').textContent = `Historial (${visibles.length}/${regs.length})`;
-    $('#histBody').innerHTML = visibles.map(filaHTML).join('')
-      || '<tr><td colspan="7" class="muted">Sin resultados con esos filtros</td></tr>';
+    $('#histBody').innerHTML = visibles.map((r, i) => filaHTML(r, i)).join('')
+      || '<tr><td colspan="8" class="muted">Sin resultados con esos filtros</td></tr>';
+    document.querySelectorAll('.hSel').forEach(c => c.addEventListener('change', actualizarExpSel));
+    actualizarExpSel();
   }
+
+  function seleccionadas() {
+    return Array.from(document.querySelectorAll('.hSel:checked')).map(c => {
+      const r = regs.filter(pasa)[+c.dataset.i];
+      return { reg: r, eq: equipo };
+    }).filter(p => p.reg);
+  }
+
+  function actualizarExpSel() {
+    $('#btnExpSel').disabled = !document.querySelector('.hSel:checked');
+  }
+
+  $('#hTodos').addEventListener('change', ev => {
+    document.querySelectorAll('.hSel').forEach(c => { c.checked = ev.target.checked; });
+    actualizarExpSel();
+  });
+
+  $('#btnExpSel').addEventListener('click', () => {
+    const pares = seleccionadas();
+    if (pares.length) generarPDFHistorial(`historial_${codigo}_seleccion.pdf`, `Historial ${codigo}`, pares);
+  });
 
   ['hDesde', 'hHasta', 'hTexto'].forEach(id => {
     $('#' + id).addEventListener('input', pintarHistorial);
