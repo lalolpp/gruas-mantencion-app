@@ -123,56 +123,73 @@ function pdfBloqueRegistro(reg, eq) {
   return html;
 }
 
-function pdfContenedor(html) {
-  let cont = document.getElementById('pdf-contenedor');
-  if (!cont) {
-    cont = document.createElement('div');
-    cont.id = 'pdf-contenedor';
-    document.body.appendChild(cont);
-  }
-  window.scrollTo(0, 0);
-  cont.style.cssText = 'position:absolute;left:0;top:0;width:740px;background:#fff;z-index:99999;box-shadow:0 0 30px rgba(0,0,0,.5);padding:12px';
-  cont.innerHTML = html;
-  return cont;
+let _pdfDocumentoActual = null;
+let _pdfNombreActual = 'reporte';
+
+function pdfDocumentoCompleto(tituloIntro, bloques) {
+  const [f, h] = pdfFechaHora();
+  return '<div style="font-family:Arial,Helvetica,sans-serif;color:#333">' +
+    pdfCabecera(f, h) + pdfTitulo(tituloIntro) + bloques + '</div>';
 }
 
-function pdfGuardar(cont, filename) {
-  const ocultar = () => { cont.style.display = 'none'; };
-  if (typeof html2pdf !== 'function') {
-    ocultar();
-    alert('No se pudo cargar el generador de PDF (revisa tu conexion)');
+function registrarPDF(html, nombre) {
+  _pdfDocumentoActual = html;
+  _pdfNombreActual = nombre;
+  mostrarModalPDF();
+}
+
+function mostrarModalPDF() {
+  let modal = document.getElementById('pdf-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'pdf-modal';
+    modal.innerHTML = `
+      <div style="position:fixed;left:0;top:0;width:100%;height:100%;background:rgba(15,23,42,.65);overflow:auto;padding:16px;z-index:100000">
+        <div style="max-width:820px;margin:0 auto">
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:8px;position:sticky;top:0;z-index:2">
+            <button class="btn primario" id="btnPdfDescargar">Descargar PDF</button>
+            <button class="btn" id="btnPdfCerrar">Cerrar</button>
+          </div>
+          <div id="pdf-modal-doc" style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 10px 40px rgba(0,0,0,.45);margin-bottom:30px"></div>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.querySelector('#btnPdfCerrar').addEventListener('click', () => { modal.style.display = 'none'; });
+    modal.querySelector('#btnPdfDescargar').addEventListener('click', descargarPDFActual);
+  }
+  modal.style.display = 'block';
+  modal.querySelector('#pdf-modal-doc').innerHTML = _pdfDocumentoActual;
+}
+
+function descargarPDFActual() {
+  if (!_pdfDocumentoActual) return;
+  const w = window.open('', '_blank');
+  if (!w) {
+    alert('Habilita las ventanas emergentes (popups) de este sitio para poder descargar el PDF.');
     return;
   }
-  html2pdf().set({
-    margin: [10, 10, 10, 10],
-    filename,
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['css', 'legacy'] }
-  }).from(cont).save().then(ocultar).catch(err => {
-    ocultar();
-    console.error('PDF error:', err);
-    alert('Error al generar PDF: ' + err.message);
-  });
+  const logoAbs = _pdfDocumentoActual.split('src="img/logo.png"').join('src="' + location.origin + '/img/logo.png"');
+  w.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>' + esc(_pdfNombreActual) + '</title>' +
+    '<style>@page{size:A4;margin:10mm}body{font-family:Arial,Helvetica,sans-serif;margin:0}</style></head><body>' +
+    logoAbs +
+    '<scr' + 'ipt>window.onload=function(){setTimeout(function(){window.print()},400)}<\/scr' + 'ipt>' +
+    '</body></html>');
+  w.document.close();
 }
 
 function generarPDFRegistro(reg, eq) {
-  const [f, h] = pdfFechaHora();
-  const cont = pdfContenedor('<div style="font-family:Arial,Helvetica,sans-serif;color:#333">' +
-    pdfCabecera(f, h) + pdfTitulo('Registro de Mantencion') + pdfBloqueRegistro(reg, eq) + '</div>');
-  pdfGuardar(cont, `registro_${reg.equipo}_${reg.fecha}.pdf`);
+  registrarPDF(
+    pdfDocumentoCompleto('Registro de Mantencion', pdfBloqueRegistro(reg, eq)),
+    `registro_${reg.equipo}_${reg.fecha}`
+  );
 }
 
 function generarPDFHistorial(nombreArchivo, tituloIntro, pares) {
-  const [f, h] = pdfFechaHora();
   const bloques = pares.map((p, i) =>
     '<div style="page-break-before:' + (i ? 'always' : 'auto') + '">' +
     pdfTitulo(`Registro ${i + 1} · ${esc(p.reg.equipo)}${p.reg.fecha ? ' — ' + esc(p.reg.fecha) : ''}`) +
     pdfBloqueRegistro(p.reg, p.eq) + '</div>').join('');
-  const cont = pdfContenedor('<div style="font-family:Arial,Helvetica,sans-serif;color:#333">' +
-    pdfCabecera(f, h) + pdfTitulo(tituloIntro) + bloques + '</div>');
-  pdfGuardar(cont, nombreArchivo);
+  registrarPDF(pdfDocumentoCompleto(tituloIntro, bloques), String(nombreArchivo).replace(/\.pdf$/i, ''));
 }
 
 Vistas.nuevo = async (el, equipoCodigo) => {
