@@ -31,6 +31,22 @@ Reemplaza el Excel `mantenciones gruas.xlsx`. Documentación técnica ampliada e
 - [x] **801 registros históricos importados** (agosto 2026): script Node en `%TEMP%\opencode\importar-historial.mjs` parsea `Gamalier_Gruas_prompt_OpenCode.md` y sube vía REST API con token OAuth del CLI. Conteos verificados por equipo (G1:61 G2:47 G3:60 G4:64 G5:59 G6:68 G7:87 G8:83 G9:77 G10:33 G11:24 G12:63 G13:50 G14:9 T01:3 T02:10 T03:3). Fechas-typo corregidas (GRUA1 f43, GRUA5 f24/f60, GRUA9 f19/f158, grua13 f2/f122); filas sin fecha fusionadas como continuación; horómetros decimales como doubleValue
 - [ ] Opcional: cambiar contraseña del usuario desde consola Firebase
 
+## Sesión 2026-08-22 (tarde) — dónde quedamos
+
+**Hecho hoy:**
+- **Auditoría anti-mezcla completa**: repo, config (`firebase-config.js`, `.firebaserc`) y hosting verificados íntegros. Cero contaminación del proyecto mantencion-lineas (sin referencias cruzadas, sin archivos ajenos publicados). Los datos NO se pudieron verificar (ver pendiente 1).
+- **Rediseño UI "GAMA FORK"** (commit `443727e`, ya en GitHub): fondo claro `#f6f8fe` con brillos pastel sutiles, header de vidrio con blur, nav en píldoras con gradiente neón, fila de KPIs de flota (Equipos/Grúas/Traspaletas/Al día/Por vencer/Vencidas), login retitulado, manifest renombrado, SW subido a `gruas-v3`. Nombre principal ahora es **GAMA FORK**, subtítulo "Mantención de Grúas".
+- **Diagnóstico de login**: Firebase Auth funciona bien; la contraseña de `edo.electric@gmail.com` ya no coincide → se envió correo de reset (2026-08-22 ~21h). El usuario debe definir una nueva desde su Gmail.
+
+**⚠️ Bloqueo del día:** Firestore devolvió `429 RESOURCE_EXHAUSTED` (cuota diaria gratuita agotada, presumiblemente por el trabajo intensivo de importación/verificación hecho en otra sesión). Se resetea a medianoche hora Pacific (~03:00–04:00 Chile).
+
+## Pendientes mañana (en orden)
+
+1. **Verificar datos tras el reset de cuota**: equipos = 17 y conteos por equipo vía REST (G1:61 G2:47 G3:60 G4:64 G5:59 G6:68 G7:87 G8:83 G9:77 G10:33 G11:24 G12:63 G13:50 G14:9 T01:3 T02:10 T03:3 = **801**). Token OAuth del CLI refrescable desde `%USERPROFILE%\.config\configstore\firebase-tools.json` con las credenciales públicas del CLI (`lib/api.js`). Si sigue 429, revisar consumo en Console → Firestore → Uso.
+2. **Confirmar login**: usuario definió nueva contraseña tras el correo de reset; probar entrar.
+3. **Desplegar el rediseño a producción**: `firebase deploy --only hosting` (el rediseño GAMA FORK está SOLO en GitHub, no en gruas-mantencion-app.web.app).
+4. (Opcional) Ajustes finos de estilo que pida el usuario viendo el preview local (`python -m http.server 8123` dentro de `static/`).
+
 ## Comandos útiles
 
 ```powershell
