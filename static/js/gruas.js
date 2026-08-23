@@ -40,14 +40,15 @@ Vistas.inicio = async el => {
     (regsPorEquipo[r.equipo] = regsPorEquipo[r.equipo] || []).push(r);
   });
 
-  const estados = equipos.map(e => calcularSemaforo(regsPorEquipo[e.codigo] || []).clase);
+  const activos = equipos.filter(e => e.estado !== 'vendida' && e.estado !== 'dada de baja');
+  const estados = activos.map(e => calcularSemaforo(regsPorEquipo[e.codigo] || []).clase);
   const n = c => estados.filter(x => x === c).length;
-  const nGruas = equipos.filter(e => e.categoria === 'grua').length;
-  const nTraspaletas = equipos.filter(e => e.categoria === 'traspaleta').length;
+  const nGruas = activos.filter(e => e.categoria === 'grua').length;
+  const nTraspaletas = activos.filter(e => e.categoria === 'traspaleta').length;
 
   el.innerHTML = `
     <div class="kpis">
-      <div class="kpi"><span class="kpi-num">${equipos.length}</span><span class="kpi-etq">Equipos</span></div>
+      <div class="kpi"><span class="kpi-num">${activos.length}</span><span class="kpi-etq">Equipos</span></div>
       <div class="kpi"><span class="kpi-num">${nGruas}</span><span class="kpi-etq">Grúas</span></div>
       <div class="kpi"><span class="kpi-num">${nTraspaletas}</span><span class="kpi-etq">Traspaletas</span></div>
       <div class="kpi kpi-verde"><span class="kpi-num">${n('verde')}</span><span class="kpi-etq">Al día</span></div>
@@ -83,8 +84,8 @@ Vistas.inicio = async el => {
       })
       .map(e => {
         const s = calcularSemaforo(regsPorEquipo[e.codigo] || []);
-        const vendida = e.estado === 'vendida';
-        return `<a class="card ${vendida ? 'vendida' : ''}" href="#/equipo/${e.codigo}">
+        const apagado = e.estado === 'vendida' || e.estado === 'dada de baja';
+        return `<a class="card ${apagado ? 'vendida' : ''}" href="#/equipo/${e.codigo}">
           <div class="card-top">
             <span class="codigo">${esc(e.codigo)}</span>
             <span class="badge ${s.clase}">${esc(s.texto)}</span>
@@ -148,7 +149,7 @@ Vistas.equipo = async (el, codigo) => {
     </div>
     <div class="tabla-wrap">
       <table class="tabla">
-        <thead><tr><th></th><th>Fecha</th><th>Horóm.</th><th>H.próx</th><th>Tipo</th><th>Empresa</th><th>Responsable</th><th>Detalle</th></tr></thead>
+        <thead><tr><th></th><th>Fecha</th><th>Horóm.</th><th>H.próx</th><th>Tipo</th><th>Empresa</th><th>Responsable</th><th>Detalle</th><th></th></tr></thead>
         <tbody id="histBody"></tbody>
       </table>
     </div>`;
@@ -164,6 +165,7 @@ Vistas.equipo = async (el, codigo) => {
             <td class="detalle-celda">
               ${['trabajos', 'elementos', 'observaciones'].map(k => r[k] ? `<details><summary>${k === 'trabajos' ? 'Trabajos' : k === 'elementos' ? 'Elementos cambiados' : 'Observaciones'}</summary><pre>${esc(r[k])}</pre></details>` : '').join('')}
             </td>
+            <td><button class="btn mini peligro hDel" data-i="${i}" title="Eliminar registro">✕</button></td>
           </tr>`;
 
   function pasa(r) {
@@ -180,8 +182,20 @@ Vistas.equipo = async (el, codigo) => {
     const visibles = regs.filter(pasa);
     $('#histTitulo').textContent = `Historial (${visibles.length}/${regs.length})`;
     $('#histBody').innerHTML = visibles.map((r, i) => filaHTML(r, i)).join('')
-      || '<tr><td colspan="8" class="muted">Sin resultados con esos filtros</td></tr>';
+      || '<tr><td colspan="9" class="muted">Sin resultados con esos filtros</td></tr>';
     document.querySelectorAll('.hSel').forEach(c => c.addEventListener('change', actualizarExpSel));
+    document.querySelectorAll('.hDel').forEach(b => b.addEventListener('click', async () => {
+      const r = visibles[+b.dataset.i];
+      if (!r) return;
+      if (!confirm(`¿Eliminar el registro del ${r.fecha || '(sin fecha)'}? Esta acción no se puede deshacer.`)) return;
+      try {
+        await Registros.eliminar(r.id);
+        toast('Registro eliminado');
+        Vistas.equipo(el, codigo);
+      } catch (err) {
+        toast('Error al eliminar: ' + err.message);
+      }
+    }));
     actualizarExpSel();
   }
 

@@ -374,6 +374,7 @@ Vistas.editar = async (el, codigo) => {
             <option value="operativa" ${sel('operativa', equipo.estado)}>operativa</option>
             <option value="detenido" ${sel('detenido', equipo.estado)}>detenida</option>
             <option value="vendida" ${sel('vendida', equipo.estado)}>vendida</option>
+            <option value="dada de baja" ${sel('dada de baja', equipo.estado)}>dada de baja</option>
           </select>
         </label>
       </div>

@@ -42,6 +42,10 @@ const Registros = {
     return this._cache;
   },
   invalidar() { this._cache = null; },
+  async eliminar(id) {
+    await db.collection('registros').doc(id).delete();
+    this.invalidar();
+  },
   async add(reg) {
     const ref = await db.collection('registros').add({
       ...reg,

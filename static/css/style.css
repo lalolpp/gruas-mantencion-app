@@ -317,6 +317,16 @@ input:focus, select:focus, textarea:focus {
 .btn.mini { padding: 5px 11px; font-size: .78rem; }
 .btn.ancho { width: 100%; }
 .btn:disabled { opacity: .5; cursor: wait; }
+.btn.peligro {
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, .35);
+  font-weight: 900;
+}
+.btn.peligro:hover {
+  background: #fee2e2;
+  border-color: rgba(220, 38, 38, .6);
+  box-shadow: 0 0 10px rgba(220, 38, 38, .25);
+}
 
 /* ---------- Tablas ---------- */
 
