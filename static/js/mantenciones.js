@@ -342,7 +342,7 @@ Vistas.editar = async (el, codigo) => {
   el.innerHTML = `
     <a href="#/equipo/${encodeURIComponent(codigo)}" class="volver">&larr; Volver a ${esc(codigo)}</a>
     <h2>Editar ${esc(equipo.codigo)}</h2>
-    <form id="frmEq" class="formulario">
+    <form id="frmEq" class="formulario" novalidate>
       <div class="fila">
         <label>Categoría
           <select id="eCategoria">
@@ -367,7 +367,7 @@ Vistas.editar = async (el, codigo) => {
       </div>
       <div class="fila">
         <label>Intervalo mantención (horas)
-          <input type="number" id="eIntervalo" min="1" step="10" value="${esc(equipo.intervaloHoras ?? '')}" />
+          <input type="number" id="eIntervalo" step="any" inputmode="decimal" value="${esc(equipo.intervaloHoras ?? '')}" />
         </label>
         <label>Estado
           <select id="eEstado">
@@ -402,7 +402,7 @@ Vistas.editar = async (el, codigo) => {
         marca: $('#eMarca').value.trim(),
         tipo: $('#eTipo').value,
         n_serie: $('#eSerie').value.trim(),
-        intervaloHoras: parseInt($('#eIntervalo').value, 10) || null,
+        intervaloHoras: parseFloat($('#eIntervalo').value) || null,
         dpto: $('#eDpto').value.trim(),
         operador: $('#eOperador').value.trim(),
         estado: $('#eEstado').value,
