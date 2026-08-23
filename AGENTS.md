@@ -42,6 +42,12 @@ Reemplaza el Excel `mantenciones gruas.xlsx`. Documentación técnica ampliada e
 
 ## Pendientes mañana (en orden)
 
+0. **Cargar mantenciones actualizadas (PREPARADO HOY)**: el Excel nuevo ya está parseado en
+   `scripts/importar-v2/datos.json` (978 registros; generado por `scripts/importar-v2/parse.mjs`
+   desde `%USERPROFILE%\Downloads\transcripcion_mantenciones_gruas_para_opencode.txt`).
+   Conteos: G1:75 G2:46 G3:69 G4:64 G5:73 G6:87 G7:105 G8:103 G9:98 G10:44 G11:23 G12:79 G13:70 G14:17 T01:2 T02:11 T03:9 + **BAOLI:2 y ALZA:1 (equipos NUEVOS, crearlos antes de cargar sus registros)**.
+   Plan: refrescar token OAuth del CLI → leer registros existentes → dedupe por equipo+fecha+horometro+hProx → subir SOLO los faltantes vía REST (lotes commit ≤400) → verificar conteos finales.
+   Discrepancias conocidas: T01 tiene 1 registro más en la BD vieja que en este Excel (no borrar sin confirmar); G2 parsea 46 vs 47 históricos (fila inicial sin fecha `G`, incluida); fechas corregidas: G13 2007→2020-11-20 (entrega), G7 1930→2020-06-30, G13 18-07-022→2022-07-18.
 1. **Verificar datos tras el reset de cuota**: equipos = 17 y conteos por equipo vía REST (G1:61 G2:47 G3:60 G4:64 G5:59 G6:68 G7:87 G8:83 G9:77 G10:33 G11:24 G12:63 G13:50 G14:9 T01:3 T02:10 T03:3 = **801**). Token OAuth del CLI refrescable desde `%USERPROFILE%\.config\configstore\firebase-tools.json` con las credenciales públicas del CLI (`lib/api.js`). Si sigue 429, revisar consumo en Console → Firestore → Uso.
 2. **Confirmar login**: usuario definió nueva contraseña tras el correo de reset; probar entrar.
 3. **Desplegar el rediseño a producción**: `firebase deploy --only hosting` (el rediseño GAMA FORK está SOLO en GitHub, no en gruas-mantencion-app.web.app).
