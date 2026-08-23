@@ -40,7 +40,20 @@ Vistas.inicio = async el => {
     (regsPorEquipo[r.equipo] = regsPorEquipo[r.equipo] || []).push(r);
   });
 
+  const estados = equipos.map(e => calcularSemaforo(regsPorEquipo[e.codigo] || []).clase);
+  const n = c => estados.filter(x => x === c).length;
+  const nGruas = equipos.filter(e => e.categoria === 'grua').length;
+  const nTraspaletas = equipos.filter(e => e.categoria === 'traspaleta').length;
+
   el.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><span class="kpi-num">${equipos.length}</span><span class="kpi-etq">Equipos</span></div>
+      <div class="kpi"><span class="kpi-num">${nGruas}</span><span class="kpi-etq">Grúas</span></div>
+      <div class="kpi"><span class="kpi-num">${nTraspaletas}</span><span class="kpi-etq">Traspaletas</span></div>
+      <div class="kpi kpi-verde"><span class="kpi-num">${n('verde')}</span><span class="kpi-etq">Al día</span></div>
+      <div class="kpi kpi-amarillo"><span class="kpi-num">${n('amarillo')}</span><span class="kpi-etq">Por vencer</span></div>
+      <div class="kpi kpi-rojo"><span class="kpi-num">${n('rojo')}</span><span class="kpi-etq">Vencidas</span></div>
+    </div>
     <div class="filtros">
       <input id="fBusca" placeholder="Buscar código, marca, depto..." />
       <select id="fFiltro">
