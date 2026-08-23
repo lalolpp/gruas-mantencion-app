@@ -41,20 +41,24 @@ Vistas.inicio = async el => {
   });
 
   const activos = equipos.filter(e => e.estado !== 'vendida' && e.estado !== 'dada de baja');
-  const estados = activos.map(e => calcularSemaforo(regsPorEquipo[e.codigo] || []).clase);
-  const n = c => estados.filter(x => x === c).length;
-  const nGruas = activos.filter(e => e.categoria === 'grua').length;
-  const nTraspaletas = activos.filter(e => e.categoria === 'traspaleta').length;
+  const conClase = c => activos.filter(e => calcularSemaforo(regsPorEquipo[e.codigo] || []).clase === c);
+  const grupos = {
+    equipos: { etq: 'Equipos', tit: 'Equipos activos', lista: activos, extra: '' },
+    grua: { etq: 'Grúas', tit: 'Grúas activas', lista: activos.filter(e => e.categoria === 'grua'), extra: '' },
+    traspaleta: { etq: 'Traspaletas', tit: 'Traspaletas activas', lista: activos.filter(e => e.categoria === 'traspaleta'), extra: '' },
+    verde: { etq: 'Al día', tit: 'Al día (más de 100 h para la próxima mantención)', lista: conClase('verde'), extra: 'kpi-verde' },
+    amarillo: { etq: 'Por vencer', tit: 'Por vencer (100 h o menos)', lista: conClase('amarillo'), extra: 'kpi-amarillo' },
+    rojo: { etq: 'Vencidas', tit: 'Mantención vencida', lista: conClase('rojo'), extra: 'kpi-rojo' }
+  };
 
   el.innerHTML = `
     <div class="kpis">
-      <div class="kpi"><span class="kpi-num">${activos.length}</span><span class="kpi-etq">Equipos</span></div>
-      <div class="kpi"><span class="kpi-num">${nGruas}</span><span class="kpi-etq">Grúas</span></div>
-      <div class="kpi"><span class="kpi-num">${nTraspaletas}</span><span class="kpi-etq">Traspaletas</span></div>
-      <div class="kpi kpi-verde"><span class="kpi-num">${n('verde')}</span><span class="kpi-etq">Al día</span></div>
-      <div class="kpi kpi-amarillo"><span class="kpi-num">${n('amarillo')}</span><span class="kpi-etq">Por vencer</span></div>
-      <div class="kpi kpi-rojo"><span class="kpi-num">${n('rojo')}</span><span class="kpi-etq">Vencidas</span></div>
+      ${Object.entries(grupos).map(([k, g]) => `
+        <button type="button" class="kpi ${g.extra}" data-kpi="${k}">
+          <span class="kpi-num">${g.lista.length}</span><span class="kpi-etq">${g.etq}</span>
+        </button>`).join('')}
     </div>
+    <div id="kpiDetalle"></div>
     <div class="filtros">
       <input id="fBusca" placeholder="Buscar código, marca, depto..." />
       <select id="fFiltro">
@@ -97,6 +101,27 @@ Vistas.inicio = async el => {
       }).join('');
     $('#grilla').innerHTML = tarjetas || '<p class="muted">Sin resultados. Si es la primera vez, carga el catálogo en la vista Catálogo o importa tu Excel.</p>';
   }
+
+  el.querySelectorAll('button.kpi').forEach(b => b.addEventListener('click', () => {
+    const g = grupos[b.dataset.kpi];
+    const yaEsta = b.classList.contains('seleccionado');
+    el.querySelectorAll('button.kpi.seleccionado').forEach(x => x.classList.remove('seleccionado'));
+    const det = $('#kpiDetalle');
+    if (yaEsta) { det.innerHTML = ''; return; }
+    b.classList.add('seleccionado');
+    det.innerHTML = `
+      <div class="kpi-detalle">
+        <h4>${g.tit} (${g.lista.length})</h4>
+        ${g.lista.map(e => {
+          const s = calcularSemaforo(regsPorEquipo[e.codigo] || []);
+          return `<a class="fila-eq" href="#/equipo/${encodeURIComponent(e.codigo)}">
+            <b>${esc(e.codigo)}</b>
+            <span class="badge ${s.clase}">${esc(s.texto)}</span>
+            <span class="feq-meta">${esc(e.marca || '')}${e.dpto ? ' · ' + esc(e.dpto) : ''}</span>
+          </a>`;
+        }).join('') || '<p class="muted">Ninguno.</p>'}
+      </div>`;
+  }));
 
   $('#fBusca').addEventListener('input', pintar);
   $('#fFiltro').addEventListener('change', pintar);

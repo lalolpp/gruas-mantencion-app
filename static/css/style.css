@@ -186,6 +186,29 @@ input:focus, select:focus, textarea:focus {
 .kpi-amarillo .kpi-num { color: var(--amarillo); }
 .kpi-rojo .kpi-num { color: var(--rojo); }
 
+button.kpi { text-align: left; font: inherit; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
+button.kpi:hover { border-color: rgba(124, 58, 237, .45); box-shadow: 0 0 12px rgba(124, 58, 237, .18); }
+.kpi.seleccionado { border-color: var(--violeta); box-shadow: 0 0 0 2px rgba(124, 58, 237, .28); }
+
+.kpi-detalle {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  padding: 8px 14px 6px;
+  margin-bottom: 14px;
+}
+.kpi-detalle h4 { margin: 6px 0 4px; }
+.fila-eq {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 2px;
+  border-top: 1px solid var(--borde);
+  color: inherit;
+  text-decoration: none;
+}
+.feq-meta { margin-left: auto; font-size: .78rem; color: var(--muted); text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* ---------- Grilla de equipos ---------- */
 
 .grilla {

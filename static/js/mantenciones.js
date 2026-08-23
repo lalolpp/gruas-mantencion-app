@@ -285,16 +285,51 @@ Vistas.nuevo = async (el, equipoCodigo) => {
 Vistas.catalogo = async el => {
   el.innerHTML = '<p class="muted">Cargando...</p>';
   const equipos = await Equipos.list();
+  const registros = await Registros.todos();
+
+  const regsPorEquipo = {};
+  registros.forEach(r => { (regsPorEquipo[r.equipo] = regsPorEquipo[r.equipo] || []).push(r); });
+
+  const colorEstado = est => est === 'operativa' ? 'verde' : est === 'en mantencion' ? 'amarillo' : est === 'detenido' ? 'rojo' : 'gris';
+
+  const activos = equipos.filter(x => x.estado !== 'vendida' && x.estado !== 'dada de baja');
+  const conClase = c => activos.filter(x => calcularSemaforo(regsPorEquipo[x.codigo] || []).clase === c);
+  const grupos = {
+    todos: { etq: 'Equipos', tit: 'Todos los equipos', lista: equipos, extra: '' },
+    operativa: { etq: 'Operativas', tit: 'Equipos operativos', lista: equipos.filter(x => x.estado === 'operativa'), extra: 'kpi-verde' },
+    mantencion: { etq: 'En mantención', tit: 'Equipos en mantención', lista: equipos.filter(x => x.estado === 'en mantencion'), extra: 'kpi-amarillo' },
+    detenido: { etq: 'Detenidas', tit: 'Equipos detenidos', lista: equipos.filter(x => x.estado === 'detenido'), extra: '' },
+    baja: { etq: 'Dadas de baja', tit: 'Dadas de baja o vendidas', lista: equipos.filter(x => x.estado === 'dada de baja' || x.estado === 'vendida'), extra: 'kpi-rojo' },
+    amarillo: { etq: 'Por vencer', tit: 'Por vencer (100 h o menos)', lista: conClase('amarillo'), extra: 'kpi-amarillo' },
+    rojo: { etq: 'Vencidas', tit: 'Mantención vencida', lista: conClase('rojo'), extra: 'kpi-rojo' }
+  };
 
   el.innerHTML = `
-    <h2>Catálogo de equipos (${equipos.length})</h2>
+    <h2 id="catTitulo">Catálogo de equipos (${equipos.length})</h2>
+    <div class="kpis">
+      ${Object.entries(grupos).map(([k, g]) => `
+        <button type="button" class="kpi ${g.extra}" data-filtro="${k}">
+          <span class="kpi-num">${g.lista.length}</span><span class="kpi-etq">${g.etq}</span>
+        </button>`).join('')}
+    </div>
     <button class="btn" id="btnCargarCatalogo">Cargar catálogo inicial</button>
     <p class="muted">Agrega los 17 equipos base si aún no existen (no duplica los ya creados).</p>
     <div class="tabla-wrap">
       <table class="tabla">
         <thead><tr><th>Código</th><th>Categoría</th><th>Marca</th><th>Tipo</th><th>Serie</th><th>Intervalo</th><th>Depto</th><th>Operador</th><th>Estado</th></tr></thead>
-        <tbody>
-          ${equipos.map(e => `<tr>
+        <tbody id="catBody"></tbody>
+      </table>
+    </div>
+    <div id="catEstado"></div>`;
+
+  let filtroActivo = null;
+  function pintaTabla() {
+    const filtrado = filtroActivo && filtroActivo !== 'todos';
+    const lista = filtrado ? grupos[filtroActivo].lista : equipos;
+    $('#catTitulo').textContent = filtrado
+      ? `${grupos[filtroActivo].tit} (${lista.length} de ${equipos.length})`
+      : `Catálogo de equipos (${equipos.length})`;
+    $('#catBody').innerHTML = lista.map(e => `<tr>
             <td><a href="#/equipo/${e.codigo}">${esc(e.codigo)}</a></td>
             <td>${esc(e.categoria)}</td>
             <td>${esc(e.marca)}</td>
@@ -303,12 +338,19 @@ Vistas.catalogo = async el => {
             <td>${esc(e.intervaloHoras)} h</td>
             <td>${esc(e.dpto)}</td>
             <td>${esc(e.operador)}</td>
-            <td>${esc(e.estado)}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>
-    <div id="catEstado"></div>`;
+            <td><span class="badge ${colorEstado(e.estado)}">${esc(e.estado || '—')}</span></td>
+          </tr>`).join('') || '<tr><td colspan="9" class="muted">Ninguno.</td></tr>';
+  }
+
+  el.querySelectorAll('button.kpi').forEach(b => b.addEventListener('click', () => {
+    const f = b.dataset.filtro;
+    const yaEsta = b.classList.contains('seleccionado');
+    el.querySelectorAll('button.kpi.seleccionado').forEach(x => x.classList.remove('seleccionado'));
+    if (yaEsta || f === 'todos') filtroActivo = null;
+    else { filtroActivo = f; b.classList.add('seleccionado'); }
+    pintaTabla();
+  }));
+  pintaTabla();
 
   $('#btnCargarCatalogo').addEventListener('click', async () => {
     const estado = $('#catEstado');
@@ -372,6 +414,7 @@ Vistas.editar = async (el, codigo) => {
         <label>Estado
           <select id="eEstado">
             <option value="operativa" ${sel('operativa', equipo.estado)}>operativa</option>
+            <option value="en mantencion" ${sel('en mantencion', equipo.estado)}>en mantención</option>
             <option value="detenido" ${sel('detenido', equipo.estado)}>detenida</option>
             <option value="vendida" ${sel('vendida', equipo.estado)}>vendida</option>
             <option value="dada de baja" ${sel('dada de baja', equipo.estado)}>dada de baja</option>
