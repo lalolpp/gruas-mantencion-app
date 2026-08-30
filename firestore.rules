@@ -2,10 +2,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // Unico admin de la app (email/password). Si se crea otro usuario,
-    // agregarlo a esta funcion.
+    // agregarlo a esta funcion. Comparacion insensible a mayusculas/minusculas
+    // (ej: gmail permite variantes de caso).
     function esAdmin() {
       return request.auth != null
-        && request.auth.token.email == 'edo.electric@gmail.com';
+        && request.auth.token.email is string
+        && request.auth.token.email.matches('(?i)^edo\\.electric@gmail\\.com$');
     }
     function equipoValido() {
       return request.resource.data.codigo is string
@@ -16,12 +18,14 @@ service cloud.firestore {
         && request.resource.data.fecha is string;
     }
     match /equipos/{doc} {
-      allow read, write: if esAdmin()
-        && (request.method == 'delete' || equipoValido());
+      allow read: if esAdmin();
+      allow create, update: if esAdmin() && equipoValido();
+      allow delete: if esAdmin();
     }
     match /registros/{doc} {
-      allow read, write: if esAdmin()
-        && (request.method == 'delete' || registroValido());
+      allow read: if esAdmin();
+      allow create, update: if esAdmin() && registroValido();
+      allow delete: if esAdmin();
     }
     // Todo lo demas (colecciones futuras) queda cerrado
     match /{document=**} {
