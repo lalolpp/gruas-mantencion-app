@@ -11,7 +11,7 @@ Reemplaza el Excel `mantenciones gruas.xlsx`. Documentación técnica ampliada e
 | Hosting | https://gruas-mantencion-app.web.app |
 | Consola | https://console.firebase.google.com/project/gruas-mantencion-app/overview |
 | Usuario admin app | edo.electric@gmail.com (creado vía REST, contraseña en poder del usuario) |
-| Repo GitHub | https://github.com/lalolpp/gruas-mantencion-app (privado, cuenta lalolpp) |
+| Repo GitHub | https://github.com/lalolpp/gruas-mantencion-app (**público**, cuenta lalolpp) |
 | Cuenta Google/Firebase CLI | edo.electric@gmail.com |
 | Base Firestore | `(default)` en southamerica-east1 |
 
@@ -19,8 +19,8 @@ Reemplaza el Excel `mantenciones gruas.xlsx`. Documentación técnica ampliada e
 
 - [x] PWA completa desplegada en Firebase Hosting
 - [x] Login con Firebase Auth (Email/contraseña activado, usuario admin creado y verificado)
-- [x] Reglas Firestore desplegadas: solo usuarios autenticados leen/escriben
-- [x] **17 equipos cargados en Firestore** (G1–G14, T01–T03) insertados vía REST API con token OAuth del CLI
+- [x] Reglas Firestore: **solo el admin (`edo.electric@gmail.com`) lee/escribe** (función `esAdmin` en `firestore.rules`); cualquier otra colección queda denegada
+- [x] **19 equipos cargados en Firestore** (G1–G14, T01–T03, BAOLI, ALZA) insertados vía REST API con token OAuth del CLI
 - [x] Dashboard con semáforo (verde >100h / amarillo ≤100h / rojo vencida / gris sin datos)
 - [x] Ficha por equipo con historial completo (trabajos/elementos/observaciones expandibles)
 - [x] Filtros en historial: rango de fechas + búsqueda por repuesto/trabajo/empresa/responsable
@@ -47,7 +47,23 @@ Reemplaza el Excel `mantenciones gruas.xlsx`. Documentación técnica ampliada e
 - [x] **Equipos nuevos creados**: BAOLI y ALZA (19 equipos en total). Campos provisionales: BAOLI grua/Baoli/combustión/250h; ALZA grua/"Alza Hombre"/combustión/n°serie 5559/250h → **revisar y corregir datos reales desde la app (Editar equipo)**
 - Conteo final por equipo: G1:77 G2:47 G3:70 G4:65 G5:73 G6:87 G7:106 G8:103 G9:99 G10:45 G11:24 G12:79 G13:70 G14:18 T01:4 T02:12 T03:9 BAOLI:2 ALZA:1
 - Notas: T01 mantiene sus 4 registros (el Excel nuevo traía 2, ya existían; no se borra nada). Normalización de empresa/tipo idéntica al importador original. origen=`excel-v2`
-- Pendiente de esta sesión: desplegar rediseño GAMA FORK a producción (deploy por REST API listo en `%TEMP%\opencode\deploy-rest.mjs`, el CLI crashea este PC)
+- Pendiente de la sesión 08-23: desplegar rediseño GAMA FORK a producción (deploy por REST API listo en `%TEMP%\opencode\deploy-rest.mjs`, el CLI crashea este PC)
+
+## Sesión 2026-08-29 — endurecimiento de seguridad + limpieza
+
+**Hecho (sin tocar la data):**
+- **`firestore.rules` reforzadas**: antes permitía leer/escribir a CUALQUIER usuario autenticado (riesgo de borrado total). Ahora solo `esAdmin()` (`edo.electric@gmail.com`) puede leer/escribir, con validación mínima de estructura (codigo / equipo+fecha) y `match /{document=**}` en deny para colecciones futuras.
+- **Eliminado el doble `firebase.initializeApp`** en `index.html` y `login.html` (ya se inicializa en `firebase-config.js`).
+- **Login**: mensaje genérico de credenciales (antes exponía el error de Firebase, revelando si un email existe).
+- **`gruas.js`**: la "Próx. mantención" de la ficha ahora sale del semáforo (`calcularSemaforo`), sin divergencias con el badge.
+- **`mantenciones.js`**: al guardar un registro ya no redirige solo a los 8s (perdía el contexto); muestra enlace a la ficha + PDF, y el foco vuelve a "Trabajos" para seguir cargando.
+- **Versión v7**: footer, manifest (iconos `?v=7`) y SW `gruas-v4` (precache completo con `compartir.js` y `qrcode.min.js`).
+- **`.gitignore`**: `scripts/importar-v2/datos.json`, `*.txt` de importación y `*.xlsx` ya no se suben (contiene historial real con nombres de personas; el repo es público).
+- Docs sincronizadas (`PROYECTO-ESTADO.md` y este archivo).
+
+**Pendiente de esta sesión (decisiones del usuario):**
+- Desplegar reglas + hosting v7 a producción (las reglas NO protegen hasta desplegarlas).
+- `datos.json` sigue en el historial git (público). Opciones: (a) dejar repo privado, (b) purgar historial con `git filter-repo`/BFG + force-push, o (c) asumirlo.
 
 ## Pendientes mañana (en orden)
 
@@ -85,7 +101,7 @@ cd static && python -m http.server 8080
   - **IMPORTANTE:** `const Vistas` se declara UNA sola vez en `gruas.js`. Los demás módulos solo hacen `Vistas.x = ...` (bug histórico ya corregido: duplicarlo rompía todos los menús)
 - Colecciones Firestore:
   - `equipos`: codigo, categoria(grua|traspaleta), marca, tipo(electrica|combustion), n_serie, intervaloHoras, dpto, operador, estado(operativa|detenido|vendida), detalle
-  - `registros`: equipo(código), fecha ISO, horometro, hProx, tipo(revision|preventiva|correctiva|recambio|accesorios|otra), empresa, responsable, supervisor, trabajos, elementos, observaciones, origen(excel|manual), creadoEn
+  - `registros`: equipo(código), fecha ISO, horometro, hProx, tipo(revision|preventiva|correctiva|recambio|accesorios|otra), empresa, responsable, supervisor, trabajos, elementos, observaciones, origen(excel|excel-v2|manual), creadoEn
 - Semáforo: `restantes = último hProx conocido − máximo horómetro`
 - Service worker cachea el shell (`sw.js`); firebase.json envía sw.js con no-cache
 

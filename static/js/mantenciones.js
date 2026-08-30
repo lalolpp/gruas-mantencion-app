@@ -271,11 +271,11 @@ Vistas.nuevo = async (el, equipoCodigo) => {
       };
       await Registros.add(guardado);
       const eq = equipos.find(x => x.codigo === guardado.equipo);
-      estado.innerHTML = '<span class="ok">Guardado.</span> <button class="btn mini" id="btnPdfReg" type="button">Descargar PDF</button>';
+      estado.innerHTML = `<span class="ok">Guardado.</span>
+        <a class="btn mini" href="#/equipo/${encodeURIComponent(guardado.equipo)}">Ir a la ficha de ${esc(guardado.equipo)}</a>
+        <button class="btn mini" id="btnPdfReg" type="button">Descargar PDF</button>`;
       $('#btnPdfReg').addEventListener('click', () => generarPDFRegistro(guardado, eq));
-      setTimeout(() => {
-        location.hash = '#/equipo/' + $('#rEquipo').value;
-      }, 8000);
+      $('#rTrabajos').focus();
     } catch (err) {
       estado.innerHTML = `<span class="aviso">Error: ${esc(err.message)}</span>`;
     }

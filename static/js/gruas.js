@@ -4,17 +4,17 @@ const Vistas = window.Vistas;
 function calcularSemaforo(regsEquipo) {
   const conHorometro = regsEquipo.filter(r => typeof r.horometro === 'number' && r.horometro > 0)
     .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
-  if (!conHorometro.length) return { clase: 'gris', texto: 'Sin datos', horometro: null, restantes: null };
+  if (!conHorometro.length) return { clase: 'gris', texto: 'Sin datos', horometro: null, restantes: null, hProx: null };
 
   const horometro = Math.max(...conHorometro.map(r => r.horometro));
   const ultimoConProx = [...conHorometro].reverse().find(r => typeof r.hProx === 'number' && r.hProx > 0);
 
-  if (!ultimoConProx) return { clase: 'gris', texto: 'Sin próx. mantención', horometro, restantes: null };
+  if (!ultimoConProx) return { clase: 'gris', texto: 'Sin próx. mantención', horometro, restantes: null, hProx: null };
 
-  const restantes = Math.round(ultimoConProx.hProx - horometro);
-  if (restantes < 0) return { clase: 'rojo', texto: `Vencida ${Math.abs(restantes)} h`, horometro, restantes };
-  if (restantes <= 100) return { clase: 'amarillo', texto: `${restantes} h`, horometro, restantes };
-  return { clase: 'verde', texto: `${restantes} h`, horometro, restantes };
+  const base = { horometro, restantes: Math.round(ultimoConProx.hProx - horometro), hProx: ultimoConProx.hProx };
+  if (base.restantes < 0) return { clase: 'rojo', texto: `Vencida ${Math.abs(base.restantes)} h`, ...base };
+  if (base.restantes <= 100) return { clase: 'amarillo', texto: `${base.restantes} h`, ...base };
+  return { clase: 'verde', texto: `${base.restantes} h`, ...base };
 }
 
 function esc(s) {
@@ -154,7 +154,7 @@ Vistas.equipo = async (el, codigo) => {
       </div>
       <div class="ficha-derecha">
         <span class="badge grande ${s.clase}">${esc(s.texto)}</span>
-        <div>Próx. mantención: <b>${regs.find(r => r.hProx)?.hProx ?? '—'} h</b></div>
+        <div>Próx. mantención: <b>${s.hProx != null ? s.hProx.toLocaleString('es-CL') : '—'} h</b></div>
       </div>
     </div>
     <div class="fila tres">

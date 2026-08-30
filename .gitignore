@@ -2,3 +2,9 @@
 serviceAccountKey.json
 *.log
 node_modules/
+
+# Datos crudos de importacion (contienen historial real con nombres de personas).
+# No subir: ya estan en Firestore; aca solo estan como copia de trabajo.
+scripts/importar-v2/datos.json
+scripts/importar-v2/*.txt
+*.xlsx

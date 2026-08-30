@@ -5,38 +5,27 @@ App PWA para controlar las mantenciones de grúas horquillas y traspaletas
 
 ## Estado actual
 
-- [x] Estructura base creada (PWA estática + Firebase)
-- [x] Login con Firebase Auth
-- [x] Catálogo inicial de 17 equipos (G1–G14, T01–T03)
+- [x] PWA desplegada en Firebase Hosting: https://gruas-mantencion-app.web.app
+- [x] Login con Firebase Auth (usuario admin: `edo.electric@gmail.com`)
+- [x] Catálogo de 19 equipos (G1–G14, T01–T03, BAOLI, ALZA)
 - [x] Dashboard con semáforo de mantenciones (verde/amarillo/rojo)
-- [x] Ficha por equipo + historial completo
+- [x] Ficha por equipo + historial completo con filtros
 - [x] Formulario nuevo registro (celular-friendly)
 - [x] Importador de Excel con vista previa y mapeo hoja→equipo
-- [ ] **Configurar Firebase** (pendiente del usuario)
-- [ ] Importar `mantenciones gruas.xlsx` real
-- [ ] Instalar como PWA en el celular
+- [x] **991 registros importados** (agosto 2026)
+- [x] Seguridad: Firestore solo lectura/escritura del admin
+  (ver `firestore.rules`)
 
-## Pendiente del usuario: conectar Firebase (10 min)
+## Seguridad (leer antes de tocar reglas)
 
-1. Ir a https://console.firebase.google.com y crear proyecto
-   (ej: `gruas-app`). Puede desactivar Analytics.
-2. En el proyecto: **Compilación > Authentication > Comenzar >
-   Correo/contraseña > Habilitar**, luego crear tu usuario en la pestaña Users.
-3. **Compilación > Firestore Database > Crear base de datos**
-   (modo producción, ubicación southamerica-east1 o us-central).
-4. **Configuración del proyecto (engranaje) > Tus apps > Web (`</>`)**:
-   registrar app web y copiar el objeto `firebaseConfig`.
-5. Pegar esa config en `static/js/firebase-config.js` (reemplazar los placeholders).
-6. Desplegar reglas y hosting:
-   ```powershell
-   npm install -g firebase-tools
-   firebase login
-   cd gruas-app
-   firebase use --add    # elegir el proyecto creado
-   firebase deploy       # sube rules + hosting
-   ```
-7. Abrir la URL que entrega Hosting (ej: `https://gruas-app.web.app`),
-   iniciar sesión e ir a **Catálogo > Cargar catálogo inicial**.
+- `firestore.rules` permite leer/escribir **solo al email admin**
+  (`edo.electric@gmail.com`, función `esAdmin()`). Si se crea otro usuario,
+  agregarlo ahí y volver a desplegar las reglas.
+- Cualquier otra colección queda denegada por defecto (`match /{document=**}`).
+- El frontend expone la `apiKey` (normal en Firebase web); la protección real
+  está en las reglas, no en la key.
+
+## Desplegar cambios
 
 ## Importar el Excel
 
@@ -71,7 +60,7 @@ gruas-app/
 │   ├── sw.js                 # service worker (offline shell)
 │   └── img/                  # íconos 192/512
 ├── docs/excel-formato.md     # reglas del formato de importación
-├── firestore.rules           # solo usuarios autenticados leen/escriben
+├── firestore.rules           # solo el admin lee/escribe (esAdmin)
 └── firebase.json             # hosting (public/static) + rules
 ```
 
@@ -88,7 +77,7 @@ registros/{autoId}
   hProx(number|null), tipo(revision|preventiva|correctiva|recambio|accesorios|otra),
   empresa, responsable, supervisor,
   trabajos(multilinea), elementos(multilinea), observaciones(multilinea),
-  origen(excel|manual), creadoEn(serverTimestamp)
+  origen(excel|excel-v2|manual), creadoEn(serverTimestamp)
 ```
 
 Semáforo: `restantes = último hProx conocido − máximo horómetro`.
