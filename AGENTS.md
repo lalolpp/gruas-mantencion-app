@@ -65,6 +65,27 @@ Reemplaza el Excel `mantenciones gruas.xlsx`. Documentación técnica ampliada e
 - Desplegar reglas + hosting v7 a producción (las reglas NO protegen hasta desplegarlas).
 - `datos.json` sigue en el historial git (público). Opciones: (a) dejar repo privado, (b) purgar historial con `git filter-repo`/BFG + force-push, o (c) asumirlo.
 
+## Sesión 2026-08-30 — fix "Missing or insufficient permissions" (causa raíz en reglas)
+
+**Síntoma:** el usuario veía "Missing or insufficient permissions" entrando como admin con las reglas endurecidas desplegadas.
+
+**Causas raíz (verificadas con el API `firebaserules ...:test`):**
+1. El `toLowerCase()` de la variante intermedia **no existe** en Security Rules → `Function not found error: Name: [toLowerCase]` → deniega todo. NO volver a usarlo.
+2. El patrón `allow read, write: if esAdmin() && (request.method == 'delete' || equipoValido())` evaluaba `request.resource` en **lecturas** (donde no existe) → error de evaluación → denegado incluso con email exacto.
+
+**Fix aplicado (commit `75efe7b`, ya pusheado y desplegado, ruleset `275dca75`):**
+- `esAdmin()`: `request.auth.token.email.matches('(?i)^edo\\.electric@gmail\\.com$')` (case-insensitive).
+- `read` separado de `create/update` (validadores `equipoValido`/`registroValido` SOLO en escrituras, donde existe `request.resource`); `delete` solo `esAdmin()`.
+- Deny-all catch `match /{document=**}` se mantiene.
+
+**Verificación (todo ✅ con identidad admin vía Firestore REST y API de test):**
+- runQuery equipos y registros → 200; create+get+delete de doc temporal → 200.
+- API test: caso mixto `Edo.Electric@Gmail.COM` → MATCH, otro email → denied, colecciones futuras → denied.
+- SHA-256 local == HEAD == desplegado: `ECA97B531AA3D3E475356A954DA7714BC9B15E4C7F85CAE5F61C320DE6A9AFC0`.
+- NOTA: en el API `:test` las queries `method:list` sin `structuredQuery` dan FALSE FAILURE aunque la regla permita (limitación del harness); validar listados vía REST `runQuery`.
+
+**Usuario confirmó: ✅ FUNCIONA en el celular (2026-08-30).**
+
 ## Pendientes mañana (en orden)
 
 0. ~~Cargar mantenciones actualizadas~~ ✅ HECHO (ver sesión 2026-08-23)
