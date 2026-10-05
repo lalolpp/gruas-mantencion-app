@@ -115,7 +115,8 @@ equipos/{autoId}
   codigo, categoria(grua|traspaleta), marca(TOYOTA|LINDE|YALE),
   tipo(electrica|combustion), n_serie, intervaloHoras,
   dpto, operador, estado(operativa|detenido|vendida), detalle,
-  flota(propia|arriendo), empresaArrendadora(solo arriendo)
+  flota(propia|arriendo), empresaArrendadora(solo arriendo),
+  horometroActual(number|null), horometroProx(number|null)
 
 registros/{autoId}
   equipo("G1"), fecha("2024-05-12"), horometro(number|null),
@@ -136,8 +137,17 @@ baterias/{id}/eventos/{autoId}     ← historial
   nota, creadoEn
 ```
 
-Semáforo: `restantes = último hProx conocido − máximo horómetro`.
+Semáforo: `restantes = próx. mantención − horómetro actual`.
 Rojo < 0 · amarillo ≤ 100 h · verde > 100 h · gris sin datos.
+
+De dónde salen el horómetro y la próx. mantención, en orden de prioridad:
+1. Lo escrito en la propia grúa: `equipos.horometroActual` / `horometroProx`
+   (se edita en *Editar equipo*, en *Nuevo equipo* o con el botón
+   *Actualizar horómetro* de la ficha).
+2. Si están vacíos, se derivan del historial: horómetro = máximo de
+   `registros.horometro`; próx. = `hProx` del registro más reciente que lo tenga.
+
+El historial nunca se borra al escribir el horómetro en la grúa.
 
 ## Notas de datos históricos
 

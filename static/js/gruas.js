@@ -1,20 +1,45 @@
 window.Vistas = window.Vistas || {};
 const Vistas = window.Vistas;
 
-function calcularSemaforo(regsEquipo) {
+// Semaforo de la grua.
+// Prioridad de los datos:
+//   1) lo escrito en la propia grua (equipo.horometroActual / equipo.horometroProx)
+//   2) si no hay nada escrito, se deriva del historial de registros
+// Asi se puede corregir la lectura sin perder el historial, y las gruas sin
+// registros siguen funcionando igual que antes.
+function numValido(v) {
+  return typeof v === 'number' && isFinite(v) && v > 0 ? v : null;
+}
+
+function calcularSemaforo(regsEquipo, equipo) {
   const conHorometro = regsEquipo.filter(r => typeof r.horometro === 'number' && r.horometro > 0)
     .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
-  if (!conHorometro.length) return { clase: 'gris', texto: 'Sin datos', horometro: null, restantes: null, hProx: null };
-
-  const horometro = Math.max(...conHorometro.map(r => r.horometro));
   const ultimoConProx = [...conHorometro].reverse().find(r => typeof r.hProx === 'number' && r.hProx > 0);
 
-  if (!ultimoConProx) return { clase: 'gris', texto: 'Sin próx. mantención', horometro, restantes: null, hProx: null };
+  const hist = {
+    horometro: conHorometro.length ? Math.max(...conHorometro.map(r => r.horometro)) : null,
+    hProx: ultimoConProx ? ultimoConProx.hProx : null
+  };
+  const equipo_ = equipo || {};
+  const horometro = numValido(equipo_.horometroActual) ?? hist.horometro;
+  const hProx = numValido(equipo_.horometroProx) ?? hist.hProx;
+  const manual = numValido(equipo_.horometroActual) != null || numValido(equipo_.horometroProx) != null;
 
-  const base = { horometro, restantes: Math.round(ultimoConProx.hProx - horometro), hProx: ultimoConProx.hProx };
-  if (base.restantes < 0) return { clase: 'rojo', texto: `Vencida ${Math.abs(base.restantes)} h`, ...base };
-  if (base.restantes <= 100) return { clase: 'amarillo', texto: `${base.restantes} h`, ...base };
-  return { clase: 'verde', texto: `${base.restantes} h`, ...base };
+  if (horometro == null && hProx == null) {
+    return { clase: 'gris', texto: 'Sin datos', horometro: null, restantes: null, hProx: null, manual };
+  }
+  if (hProx == null) {
+    return { clase: 'gris', texto: 'Sin próx. mantención', horometro, restantes: null, hProx: null, manual };
+  }
+  if (horometro == null) {
+    return { clase: 'gris', texto: 'Sin horómetro', horometro: null, restantes: null, hProx, manual };
+  }
+
+  const restantes = Math.round(hProx - horometro);
+  const base = { horometro, restantes, hProx, manual };
+  if (restantes < 0) return { clase: 'rojo', texto: `Vencida ${Math.abs(restantes)} h`, ...base };
+  if (restantes <= 100) return { clase: 'amarillo', texto: `${restantes} h`, ...base };
+  return { clase: 'verde', texto: `${restantes} h`, ...base };
 }
 
 function esc(s) {
@@ -69,7 +94,7 @@ Vistas.inicio = async el => {
 
   function pintarKPIs(equipos) {
     const activos = equipos.filter(e => e.estado !== 'vendida' && e.estado !== 'dada de baja');
-    const conClase = c => activos.filter(e => calcularSemaforo(regsPorEquipo[e.codigo] || []).clase === c);
+    const conClase = c => activos.filter(e => calcularSemaforo(regsPorEquipo[e.codigo] || [], e).clase === c);
     const grupos = {
       equipos: { etq: 'Equipos', tit: 'Equipos activos', lista: activos, extra: '' },
       grua: { etq: 'Grúas', tit: 'Grúas activas', lista: activos.filter(e => e.categoria === 'grua'), extra: '' },
@@ -94,7 +119,7 @@ Vistas.inicio = async el => {
         <div class="kpi-detalle">
           <h4>${g.tit} (${g.lista.length})</h4>
           ${g.lista.map(e => {
-            const s = calcularSemaforo(regsPorEquipo[e.codigo] || []);
+            const s = calcularSemaforo(regsPorEquipo[e.codigo] || [], e);
             return `<a class="fila-eq" href="#/equipo/${encodeURIComponent(e.codigo)}">
               <b>${esc(e.codigo)}</b>
               <span class="badge ${s.clase}">${esc(s.texto)}</span>
@@ -121,7 +146,7 @@ Vistas.inicio = async el => {
           .join(' ').toLowerCase().includes(busca);
       })
       .map(e => {
-        const s = calcularSemaforo(regsPorEquipo[e.codigo] || []);
+        const s = calcularSemaforo(regsPorEquipo[e.codigo] || [], e);
         const apagado = e.estado === 'vendida' || e.estado === 'dada de baja';
         return `<a class="card ${apagado ? 'vendida' : ''}" href="#/equipo/${e.codigo}">
           <div class="card-top">
@@ -130,7 +155,7 @@ Vistas.inicio = async el => {
           </div>
           <div class="card-sub chips">${chipsEquipo(e)}</div>
           <div class="card-meta">${esc(e.dpto || '')}${e.operador ? ' · ' + esc(e.operador) : ''}</div>
-          <div class="card-meta">Horómetro: <b>${s.horometro != null ? s.horometro.toLocaleString('es-CL') : '—'}</b></div>
+          <div class="card-meta">Horómetro: <b>${s.horometro != null ? s.horometro.toLocaleString('es-CL') : '—'}</b>${s.hProx != null ? ` → próx. <b>${s.hProx.toLocaleString('es-CL')}</b> h` : ''}</div>
         </a>`;
       }).join('');
     $('#grilla').innerHTML = tarjetas || '<p class="muted">Sin resultados en esta flota.</p>';
@@ -169,7 +194,7 @@ Vistas.equipo = async (el, codigo) => {
   const todos = await Registros.todos();
   const regs = todos.filter(r => r.equipo === codigo)
     .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
-  const s = calcularSemaforo(regs);
+  const s = calcularSemaforo(regs, equipo);
 
   el.innerHTML = `
     <a href="#/" class="volver">&larr; Volver</a>
@@ -185,7 +210,13 @@ Vistas.equipo = async (el, codigo) => {
       </div>
       <div class="ficha-derecha">
         <span class="badge grande ${s.clase}">${esc(s.texto)}</span>
-        <div>Próx. mantención: <b>${s.hProx != null ? s.hProx.toLocaleString('es-CL') : '—'} h</b></div>
+        <div>Horómetro actual: <b id="fHActual">${s.horometro != null ? s.horometro.toLocaleString('es-CL') : '—'} h</b></div>
+        <div>Próx. mantención: <b id="fHProx">${s.hProx != null ? s.hProx.toLocaleString('es-CL') : '—'} h</b></div>
+        ${s.manual ? '<div class="muted" style="font-size:.75rem">Valores escritos en la grúa</div>' : ''}
+        <div class="fila dos" style="margin-top:8px">
+          <button class="btn mini" id="btnHorometro">Actualizar horómetro</button>
+          <button class="btn mini" id="btnQuitarManual" ${s.manual ? '' : 'hidden'}>Volver al historial</button>
+        </div>
       </div>
     </div>
     <div class="fila tres">
@@ -291,5 +322,51 @@ Vistas.equipo = async (el, codigo) => {
 
   $('#btnEditar').addEventListener('click', () => {
     location.hash = '#/editar/' + encodeURIComponent(codigo);
+  });
+
+  // Actualizacion rapida del horometro SIN salir de la ficha. Escribe en el
+  // documento del equipo; el historial no se toca.
+  $('#btnHorometro').addEventListener('click', async () => {
+    const s0 = calcularSemaforo(regs, equipo);
+    const bruto = prompt(
+      `${codigo}\n\nHorómetro actual (horas):`,
+      s0.horometro != null ? String(s0.horometro) : ''
+    );
+    if (bruto === null) return;
+    const act = bruto.trim() === '' ? null : parseFloat(bruto.replace(/\./g, '').replace(',', '.'));
+    if (bruto.trim() !== '' && (isNaN(act) || act < 0)) { toast('Horómetro inválido'); return; }
+
+    let prox = s0.hProx;
+    if (act != null) {
+      const porDefecto = act + Number(equipo.intervaloHoras || 0);
+      const bruto2 = prompt(
+        `Horómetro de la próxima mantención (horas):\n\nSugerido: ${porDefecto} (actual + intervalo de ${equipo.intervaloHoras || '—'} h). Deja vacío para borrar.`,
+        s0.hProx != null ? String(s0.hProx) : String(porDefecto)
+      );
+      if (bruto2 === null) return;
+      prox = bruto2.trim() === '' ? null : parseFloat(bruto2.replace(/\./g, '').replace(',', '.'));
+      if (bruto2.trim() !== '' && (isNaN(prox) || prox < 0)) { toast('Valor inválido'); return; }
+    } else {
+      prox = null;
+    }
+
+    try {
+      await Equipos.upsert({ codigo, horometroActual: act, horometroProx: prox });
+      toast('Horómetro actualizado');
+      Vistas.equipo(el, codigo);
+    } catch (err) {
+      toast('Error al guardar: ' + err.message);
+    }
+  });
+
+  $('#btnQuitarManual').addEventListener('click', async () => {
+    if (!confirm(`¿Borrar el horómetro escrito en ${codigo} y volver a usar el historial?`)) return;
+    try {
+      await Equipos.upsert({ codigo, horometroActual: null, horometroProx: null });
+      toast('Vuelve a tomar el horómetro del historial');
+      Vistas.equipo(el, codigo);
+    } catch (err) {
+      toast('Error al guardar: ' + err.message);
+    }
   });
 };

@@ -293,7 +293,7 @@ Vistas.catalogo = async el => {
   const colorEstado = est => est === 'operativa' ? 'verde' : est === 'en mantencion' ? 'amarillo' : est === 'detenido' ? 'rojo' : 'gris';
 
   const activos = equipos.filter(x => x.estado !== 'vendida' && x.estado !== 'dada de baja');
-  const conClase = c => activos.filter(x => calcularSemaforo(regsPorEquipo[x.codigo] || []).clase === c);
+  const conClase = c => activos.filter(x => calcularSemaforo(regsPorEquipo[x.codigo] || [], x).clase === c);
   const grupos = {
     todos: { etq: 'Equipos', tit: 'Todos los equipos', lista: equipos, extra: '' },
     operativa: { etq: 'Operativas', tit: 'Equipos operativos', lista: equipos.filter(x => x.estado === 'operativa'), extra: 'kpi-verde' },
@@ -319,7 +319,7 @@ Vistas.catalogo = async el => {
     <p class="muted">Cargar catálogo inicial agrega los equipos base que aún no existen (no duplica los ya creados).</p>
     <div class="tabla-wrap">
       <table class="tabla">
-        <thead><tr><th>Código</th><th>Flota</th><th>Categoría</th><th>Marca</th><th>Tipo</th><th>Serie</th><th>Intervalo</th><th>Depto</th><th>Operador</th><th>Estado</th></tr></thead>
+        <thead><tr><th>Código</th><th>Flota</th><th>Categoría</th><th>Marca</th><th>Tipo</th><th>Serie</th><th>Intervalo</th><th>Horóm.</th><th>H.próx</th><th>Depto</th><th>Operador</th><th>Estado</th></tr></thead>
         <tbody id="catBody"></tbody>
       </table>
     </div>
@@ -332,7 +332,9 @@ Vistas.catalogo = async el => {
     $('#catTitulo').textContent = filtrado
       ? `${grupos[filtroActivo].tit} (${lista.length} de ${equipos.length})`
       : `Catálogo de equipos (${equipos.length})`;
-    $('#catBody').innerHTML = lista.map(e => `<tr>
+    $('#catBody').innerHTML = lista.map(e => {
+      const s = calcularSemaforo(regsPorEquipo[e.codigo] || [], e);
+      return `<tr>
             <td><a href="#/equipo/${e.codigo}">${esc(e.codigo)}</a></td>
             <td>${flotaDe(e) === FLOTA_ARRENDO ? 'Arriendo' : 'Propia'}</td>
             <td>${esc(e.categoria)}</td>
@@ -340,10 +342,13 @@ Vistas.catalogo = async el => {
             <td>${esc(e.tipo)}</td>
             <td>${esc(e.n_serie)}</td>
             <td>${esc(e.intervaloHoras)} h</td>
+            <td>${s.horometro != null ? s.horometro.toLocaleString('es-CL') : '—'}</td>
+            <td>${s.hProx != null ? s.hProx.toLocaleString('es-CL') : '—'}</td>
             <td>${esc(e.dpto)}</td>
             <td>${esc(e.operador)}</td>
             <td><span class="badge ${colorEstado(e.estado)}">${esc(e.estado || '—')}</span></td>
-          </tr>`).join('') || '<tr><td colspan="10" class="muted">Ninguno.</td></tr>';
+          </tr>`;
+    }).join('') || '<tr><td colspan="12" class="muted">Ninguno.</td></tr>';
   }
 
   el.querySelectorAll('button.kpi').forEach(b => b.addEventListener('click', () => {
@@ -444,6 +449,14 @@ Vistas.nuevoEquipo = async el => {
           </select>
         </label>
       </div>
+      <div class="fila">
+        <label>Horómetro actual (horas)
+          <input type="number" id="nHorometro" step="any" min="0" inputmode="decimal" placeholder="Opcional" />
+        </label>
+        <label>Horómetro próxima mantención (horas)
+          <input type="number" id="nHProx" step="any" min="0" inputmode="decimal" placeholder="Opcional" />
+        </label>
+      </div>
       <label>Detalle / nota interna
         <textarea id="nDetalle" rows="2"></textarea>
       </label>
@@ -484,6 +497,8 @@ Vistas.nuevoEquipo = async el => {
         tipo: $('#nTipo').value,
         n_serie: $('#nSerie').value.trim(),
         intervaloHoras: parseFloat($('#nIntervalo').value) || null,
+        horometroActual: parseFloat($('#nHorometro').value) || null,
+        horometroProx: parseFloat($('#nHProx').value) || null,
         dpto: $('#nDpto').value.trim(),
         operador: $('#nOperador').value.trim(),
         estado: $('#nEstado').value,
@@ -566,6 +581,18 @@ Vistas.editar = async (el, codigo) => {
         </label>
       </div>
       <div class="fila">
+        <label>Horómetro actual (horas)
+          <input type="number" id="eHorometro" step="any" min="0" inputmode="decimal" value="${esc(equipo.horometroActual ?? '')}" placeholder="Vacío = usar historial" />
+        </label>
+        <label>Horómetro próxima mantención (horas)
+          <input type="number" id="eHProx" step="any" min="0" inputmode="decimal" value="${esc(equipo.horometroProx ?? '')}" placeholder="Vacío = usar historial" />
+        </label>
+      </div>
+      <p class="muted" style="font-size:.78rem;margin:-4px 0 6px">
+        Si los dejas vacíos, el horómetro y la próxima mantención se toman del historial, como antes.
+        Al llenarlos pasan a mandar estos valores en el semáforo.
+      </p>
+      <div class="fila">
         <label>Depto / sector
           <input id="eDpto" value="${esc(equipo.dpto || '')}" />
         </label>
@@ -594,6 +621,8 @@ Vistas.editar = async (el, codigo) => {
         tipo: $('#eTipo').value,
         n_serie: $('#eSerie').value.trim(),
         intervaloHoras: parseFloat($('#eIntervalo').value) || null,
+        horometroActual: parseFloat($('#eHorometro').value) || null,
+        horometroProx: parseFloat($('#eHProx').value) || null,
         dpto: $('#eDpto').value.trim(),
         operador: $('#eOperador').value.trim(),
         estado: $('#eEstado').value,

@@ -174,6 +174,34 @@ Los helpers `esAdmin()` / `esEncargado()` / `puedeEditar()` / `puedeBorrar()` si
 
 **Usuario Encargado:** la cuenta `eduardo.espinoza@garatehermanos.cl` sigue existiendo en Firebase Auth pero **ya no se usa** (con el modo abierto no hay login). Se puede borrar desde la consola si el usuario quiere.
 
+## Sesión 2026-10-05 (tarde 2) — horómetro en la grúa (v10) + fix batería
+
+**Petición del usuario:** poder colocar el **horómetro actual** y el **horómetro de la próxima mantención** en las grúas. Decisiones suyas: lo escrito en la grúa **manda** sobre el historial, y se edita **en ambos lados** (Editar equipo + botón rápido en la ficha).
+
+**Campos nuevos en `equipos`:** `horometroActual` y `horometroProx` (number|null).
+
+**`calcularSemaforo(regsEquipo, equipo)`** ahora recibe el equipo (2.º argumento). Prioridad: `equipo.horometroActual` / `equipo.horometroProx` si son válidos (>0), si no el historial como antes. Umbrales sin cambios: rojo < 0, amarillo ≤ 100, verde > 100. Devuelve además `manual: bool`. **Los 8 call sites** pasaron a mandar el equipo: `gruas.js:97,122,149,197,330` y `mantenciones.js:296,336`. Si se agrega un call site nuevo, no olvidar el 2.º argumento.
+
+**UI:** ficha con "Horómetro actual" y "Próx. mantención" + botón **Actualizar horómetro** (prompt: actual, y luego próxima con sugerencia `actual + intervalo`, acepta "1.500" o "1500,5") y botón **Volver al historial** (borra los campos). Formularios Editar equipo y Nuevo equipo con los 2 campos. Catálogo con columnas Horóm. y H.próx. Tarjeta del dashboard muestra `horómetro → próx.`.
+
+**Pruebas:** 14/14 de la lógica (`%TEMP%\opencode\test-horometro.mjs` extrae la función del archivo real y cubre umbrales, override, null, 0, grúa sin registros). Firestore real (`%TEMP%\opencode\verificar-horometro.mjs`): crear con los 2 campos, patch parcial que NO borra el otro campo, y limpieza → 200. Smoke 9/9. Checksums 11/11.
+
+### Fix: "Unsupported field value: undefined" al crear batería
+
+**Síntoma:** el usuario no podía crear una batería: `Function addDoc() called with invalid data. Unsupported field value: undefined (found in field id in document baterias/...)`.
+
+**Causa:** `baterias.js` manda `id: id || undefined`; en alta `Baterias.guardar` hacía `{...bateria}` sin limpiar, así que `id: undefined` viajaba al documento y el SDK lo rechaza. El error es del cliente: **no se guardó nada**.
+
+**Fix (raíz, en `db.js`):** helper `sinIndefinidos(objeto)` que quita las claves con valor `undefined` (los `null` SÍ son válidos) y se aplica en `Equipos.crear`, `Equipos.upsert`, `Registros.add`, `Registros.bulkInsert`, `Baterias.guardar` y `Baterias.agregarEvento`. Conserva el sentinel de `FieldValue.serverTimestamp()`. Test: `%TEMP%\opencode\test-undefined.mjs` (8/8).
+
+**⚠️ Quirks de Firestore REST (para tests, no para la app):**
+- `PATCH` con `updateMask.fieldPaths=A,B` y ambos valores `nullValue` → **400**. Con un solo campo → 200. La app no sufre esto porque el SDK hace `set` del documento completo, no un updateMask.
+- El SDK **rechaza `undefined`** en cualquier campo; `null` está permitido.
+
+**Estado de datos al momento:** 21 equipos (el usuario creó 2 de arriendo), 993 registros intactos, 0 baterías.
+
+**Versiones:** footer v10, manifest `?v=10`, SW `gruas-v7`. Deploy solo hosting (las reglas no cambiaron).
+
 ## Datos históricos relevantes (del Excel original)
 
 - G11 Yale vendida → estado `vendida`, se ve atenuada

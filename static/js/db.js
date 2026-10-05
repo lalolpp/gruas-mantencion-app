@@ -11,6 +11,16 @@ function flotaDe(e) {
 }
 function esPropio(e) { return flotaDe(e) === FLOTA_PROPIA; }
 
+// El SDK de Firestore RECHAZA `undefined` en cualquier campo ("Unsupported field
+// value: undefined"). Pasa mucho al construir el objeto desde un formulario:
+// un campo vacio llega como `id: undefined` o `x: undefined` y revienta el
+// guardado. Se limpian antes de escribir. Los null SI son validos.
+function sinIndefinidos(objeto) {
+  const limpio = {};
+  Object.keys(objeto || {}).forEach(k => { if (objeto[k] !== undefined) limpio[k] = objeto[k]; });
+  return limpio;
+}
+
 function cmpCodigo(a, b) {
   const m1 = String(a).match(/^([A-Za-z]+)(\d+)$/), m2 = String(b).match(/^([A-Za-z]+)(\d+)$/);
   if (m1 && m2) {
@@ -50,19 +60,20 @@ const Equipos = {
   async crear(equipo) {
     const existente = await this.byCodigo(equipo.codigo);
     if (existente) throw new Error(`Ya existe un equipo con el codigo ${equipo.codigo}`);
-    const ref = await db.collection('equipos').add({
+    const ref = await db.collection('equipos').add(sinIndefinidos({
       ...equipo,
       creadoEn: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    }));
     return ref.id;
   },
   async upsert(equipo) {
     const existente = await this.byCodigo(equipo.codigo);
+    const datos = sinIndefinidos(equipo);
     if (existente) {
-      await db.collection('equipos').doc(existente.id).set(equipo, { merge: true });
+      await db.collection('equipos').doc(existente.id).set(datos, { merge: true });
       return existente.id;
     }
-    return this.crear(equipo);
+    return this.crear(datos);
   }
 };
 
@@ -80,20 +91,20 @@ const Registros = {
     this.invalidar();
   },
   async add(reg) {
-    const ref = await db.collection('registros').add({
+    const ref = await db.collection('registros').add(sinIndefinidos({
       ...reg,
       creadoEn: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    }));
     this.invalidar();
     return ref.id;
   },
   async bulkInsert(regs, onProgreso) {
     let lote = db.batch(), n = 0, total = 0;
     for (const reg of regs) {
-      lote.set(db.collection('registros').doc(), {
+      lote.set(db.collection('registros').doc(), sinIndefinidos({
         ...reg,
         creadoEn: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      }));
       if (++n === 400) {
         await lote.commit();
         total += n;
@@ -135,14 +146,17 @@ const Baterias = {
   async guardar(bateria) {
     if (bateria.id) {
       const { id, ...resto } = bateria;
-      await db.collection('baterias').doc(id).set(resto, { merge: true });
+      await db.collection('baterias').doc(id).set(sinIndefinidos(resto), { merge: true });
       this.invalidar();
       return id;
     }
-    const ref = await db.collection('baterias').add({
+    // Ojo: sin sinIndefinidos, un formulario que mande `id: undefined` (o
+    // cualquier campo vacio) hace fallar addDoc con
+    // "Unsupported field value: undefined".
+    const ref = await db.collection('baterias').add(sinIndefinidos({
       ...bateria,
       creadoEn: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    }));
     this.invalidar();
     return ref.id;
   },
@@ -155,10 +169,10 @@ const Baterias = {
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   },
   async agregarEvento(bateriaId, evento) {
-    const ref = await db.collection('baterias').doc(bateriaId).collection('eventos').add({
+    const ref = await db.collection('baterias').doc(bateriaId).collection('eventos').add(sinIndefinidos({
       ...evento,
       creadoEn: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    }));
     return ref.id;
   },
   async eliminarEvento(bateriaId, eventoId) {

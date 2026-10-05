@@ -1,4 +1,4 @@
-const CACHE = 'gruas-v6';
+const CACHE = 'gruas-v7';
 const PRECACHE = [
   '/',
   '/index.html',
