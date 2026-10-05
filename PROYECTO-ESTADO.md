@@ -6,8 +6,8 @@ App PWA para controlar las mantenciones de grúas horquillas y traspaletas
 ## Estado actual
 
 - [x] PWA desplegada en Firebase Hosting: https://gruas-mantencion-app.web.app
-- [x] Login con Firebase Auth (usuario admin: `edo.electric@gmail.com`)
-- [x] Catálogo de 19 equipos (G1–G14, T01–T03, BAOLI, ALZA)
+- [x] **Sin login** (modo abierto, v9): se entra directo a la app
+- [x] Catálogo de 19 equipos (G1–G14, T01–T03, BAOLI, ALZA), todos `flota=propia`
 - [x] Dashboard con semáforo de mantenciones (verde/amarillo/rojo)
 - [x] Ficha por equipo + historial completo con filtros
 - [x] Formulario nuevo registro (celular-friendly)
@@ -22,23 +22,43 @@ App PWA para controlar las mantenciones de grúas horquillas y traspaletas
   (incluida Vega)
 - [x] **Rol Encargado** (`eduardo.espinoza@garatehermanos.cl`): lee, crea y
   edita, **no borra**
-- [x] Seguridad: Firestore con roles admin/encargado (ver `firestore.rules`)
+- [x] **MODO ABIERTO (v9)**: la app abre sin login. Cualquiera con la URL
+  puede ver, crear, editar y **borrar**. Decisión del usuario, con el riesgo
+  asumido (los nombres de responsables quedan expuestos)
+- [x] Seguridad: validadores estructurales siguen activos + deny-all para
+  colecciones futuras (ver `firestore.rules`)
 
 ## Seguridad (leer antes de tocar reglas)
 
-- `firestore.rules` define dos roles:
-  - `esAdmin()` = `edo.electric@gmail.com` (verificado con regex
-    `(?i)^edo\\.electric@gmail\\.com$`, **sin `toLowerCase()`**, que no existe
-    en Security Rules)
-  - `esEncargado()` = `eduardo.espinoza@garatehermanos.cl` — lee/crea/edita,
-    **no borra**
+**Estado actual: MODO ABIERTO.** `firestore.rules` tiene una funciónInterrupt
+conmutable:
+
+```js
+function modoAbierto() { return true; }   // ← poner false para volver a exigir login
+```
+
+Mientras valga `true`, las reglas ignoran los roles y permiten todo en
+`equipos`, `registros`, `baterias` y `baterias/{id}/eventos`, incluso a
+peticiones **sin sesión** (sin token). Para volver a cerrarla: poner
+`modoAbierto()` en `false`, desplegar reglas y recargar. Los helpers de rol
+siguen ahí y se reactivan solos:
+
+- `esAdmin()` = `edo.electric@gmail.com` (verificado con regex
+  `(?i)^edo\\.electric@gmail\\.com$`, **sin `toLowerCase()`**, que no existe
+  en Security Rules)
+- `esEncargado()` = `eduardo.espinoza@garatehermanos.cl` — lee/crea/edita,
+  **no borra**
 - `puedeEditar()` / `puedeBorrar()` son las funciones que las reglas usan.
 - Los validadores (`equipoValido`, `registroValido`, `bateriaValida`) se
   evaluan **solo en escrituras**: usar `request.resource` dentro de un
   `allow read` rompe todo (error de evaluación → denegado).
-- Cualquier otra colección queda denegada por defecto (`match /{document=**}`).
-- El frontend expone la `apiKey` (normal en Firebase web); la protección real
-  está en las reglas, no en la key.
+- Cualquier colección que no sea esas cuatro sigue denegada
+  (`match /{document=**}`).
+- **Los nombres de función deben ser lowerCamelCase.** `MODO_ABIERTO()` es
+  inválido y hace fallar TODAS las reglas (el API lo reporta como
+  `Invalid variable name`). Usar `modoAbierto()`.
+- El frontend expone la `apiKey` (normal en Firebase web); con el modo abierto
+  la protección real son las reglas, no la key.
 
 ## Desplegar cambios
 

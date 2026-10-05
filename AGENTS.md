@@ -88,11 +88,11 @@ Reemplaza el Excel `mantenciones gruas.xlsx`. Documentación técnica ampliada e
 
 ## Pendientes mañana (en orden)
 
-0. ~~Cargar mantenciones actualizadas~~ ✅ HECHO (ver sesión 2026-08-23)
-1. **Encargado debe definir su contraseña** desde el correo de reset recibido (ya enviado 2026-10-05). Verificar luego su login.
-2. **Probar en el celular** pestañas de flota, alta de equipo de arriendo (debe quedar `AR-G5` si G5 ya existe) y módulo Baterías.
-3. (Opcional) Ajustes finos de estilo que pida el usuario viendo el preview local (`python -m http.server 8123` dentro de `static/`).
-4. (Opcional, pendiente desde 2026-08-29) Repo sigue **público** con `datos.json` en el historial: (a) hacerlo privado, (b) `git filter-repo`/BFG + force-push, o (c) asumir el riesgo.
+1. **Probar en el celular con modo abierto**: pestañas de flota, alta de equipo de arriendo (debe quedar `AR-G5` si G5 ya existe) y módulo Baterías. Ya no hay login: abrir la URL directo.
+2. (Opcional) Ajustes finos de estilo que pida el usuario viendo el preview local (`python -m http.server 8123` dentro de `static/`).
+3. (Opcional) Borrar de Firebase Auth la cuenta `eduardo.espinoza@garatehermanos.cl` si ya no se quiere.
+4. (Opcional, pendiente desde 2026-08-29) Repo sigue **público** con `datos.json` en el historial. Con el modo abierto esto importa más: la URL es pública, así que los datos son accesibles para quien la conozca.
+5. (Opcional) Cambiar la URL de hosting o poner el repo en privado si se quiere reducir exposición.
 
 ## Comandos útiles
 
@@ -151,6 +151,28 @@ cd static && python -m http.server 8080
 **Deploy:** `firebase deploy --only firestore:rules,hosting` → compile OK, hosting release complete. Checksums local==producción en los 11 archivos (`%TEMP%\opencode\verificar-deploy.mjs`).
 
 **Smoke test:** `%TEMP%\opencode\smoke.mjs` carga los 10 scripts en el mismo orden que `index.html` con stubs de DOM/firebase y ejecuta 9 vistas → todas OK. `%TEMP%\opencode\check-dups.mjs` confirma que no hay declaraciones top-level duplicadas entre scripts.
+
+## Sesión 2026-10-05 (tarde) — MODO ABIERTO: la app abre sin login (v9)
+
+**Decisión del usuario:** "déjalo sin contraseña, abierto". Avisé del riesgo (el repo es público y `AGENTS.md` publica la URL → cualquiera que encuentre el repo entra y ve/edita/borra los 993 registros, con nombres de responsables reales) y lo eligió de todos modos. No volver a insistir: ya está asumido.
+
+**`firestore.rules`:** nueva función conmutable `modoAbierto()` que devuelve `true`.
+```js
+function modoAbierto() { return true; }   // ← false para volver a exigir login
+match /equipos/{doc} { allow read: if modoAbierto() || puedeEditar(); ... }
+```
+Los helpers `esAdmin()` / `esEncargado()` / `puedeEditar()` / `puedeBorrar()` siguen en el archivo y se reactivan solos al poner `false`. Los validadores estructurales se mantienen (evitan docs sin `codigo`/`equipo`+`fecha`/`numero`). `match /{document=**}` deny-all intacto.
+
+**⚠️ LECCIÓN IMPORTANTE (no repetir):** el primer intento usó `function MODO_ABIERTO()`. El API lo rechazó con `Invalid variable name: MODO_ABIERTO` y **todas las reglas quedaron denegadas** (13/13 tests FALLURE). Los nombres de función en Security Rules deben ser **lowerCamelCase**. Se detectó probando ANTES de desplegar; si se hubiera desplegado, la app habría quedado inservible. Siempre `firebaserules ...:test` antes de `deploy`.
+
+**`auth.js`:** `MODO_ABIERTO: true`; `guard()` resuelve de inmediato con un usuario sintético `{ email: 'acceso abierto', abierto: true }` (sin `onAuthStateChanged`); `salir()` es no-op; `esAdmin/esEncargado/puedeEditar/puedeBorrar()` devuelven `true`.
+**`app.js`:** oculta `#btnSalir` en modo abierto.
+
+**Verificación (con peticiones SIN token, `%TEMP%\opencode\verificar-abierto-prod.mjs`):** lee equipos/registros/baterias 200, crea 200, edita 200, crea batería 200, **borra 200**, colección futura 403, equipo sin código 403. Reglas: 18/18 SUCCESS (`%TEMP%\opencode\test-abierto.mjs`). Smoke test 9/9 OK. Checksums local==prod 11/11. Datos intactos: 19 equipos, 993 registros, 0 baterías.
+
+**Versiones:** footer `v9 · 5-oct-2026 · acceso abierto`, manifest iconos `?v=9`, SW `gruas-v6`. Deploy `firestore:rules,hosting` OK.
+
+**Usuario Encargado:** la cuenta `eduardo.espinoza@garatehermanos.cl` sigue existiendo en Firebase Auth pero **ya no se usa** (con el modo abierto no hay login). Se puede borrar desde la consola si el usuario quiere.
 
 ## Datos históricos relevantes (del Excel original)
 

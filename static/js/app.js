@@ -63,7 +63,13 @@ window.addEventListener('beforeinstallprompt', ev => {
 Auth.guard().then(user => {
   authOk = true;
   $('#usuario').textContent = user.email;
-  $('#btnSalir').addEventListener('click', () => Auth.salir());
+  // En modo abierto no hay sesion que cerrar, asi que el boton se oculta.
+  if (Auth.MODO_ABIERTO) {
+    const btn = $('#btnSalir');
+    if (btn) btn.style.display = 'none';
+  } else {
+    $('#btnSalir').addEventListener('click', () => Auth.salir());
+  }
   navegar();
 }).catch(() => { location.replace('login.html'); });
 

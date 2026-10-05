@@ -1,7 +1,23 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Roles:
+    // =====================================================================
+    // MODO ABIERTO (2026-10-05, pedido del usuario)
+    // Anyone with the URL can read, create, edit and DELETE in equipos,
+    // registros, baterias and baterias/{id}/eventos. No login needed.
+    //
+    // TO RE-LOCK (login again):
+    //   1. set modoAbierto() to return false
+    //   2. deploy rules and reopen the app
+    // The role helpers below are used automatically once modoAbierto() is false.
+    // OJO: los nombres de funcion en Security Rules deben ser lowerCamelCase
+    // (MODO_ABIERTO() es un nombre INVALIDO y rompe todas las reglas).
+    // =====================================================================
+    function modoAbierto() {
+      return true;
+    }
+
+    // Roles (usados solo si MODO_ABIERTO = false):
     //   esAdmin()    -> edo.electric@gmail.com (control total, incl. borrar)
     //   esEncargado()-> puede leer, crear y editar, pero NO borrar
     // Comparacion insensible a mayusculas/minusculas (gmail permite variantes de caso).
@@ -23,6 +39,9 @@ service cloud.firestore {
     function puedeBorrar() {
       return esAdmin();
     }
+    // Los validadores structurales siguen activos aunque el acceso sea abierto:
+    // evitan que se guarden documentos sin codigo/equipo/fecha/numero.
+    // Solo se evaluan en escrituras (en lecturas request.resource no existe).
     function equipoValido() {
       return request.resource.data.codigo is string
         && request.resource.data.codigo.size() > 0;
@@ -36,25 +55,25 @@ service cloud.firestore {
         && request.resource.data.numero.size() > 0;
     }
     match /equipos/{doc} {
-      allow read: if puedeEditar();
-      allow create, update: if puedeEditar() && equipoValido();
-      allow delete: if puedeBorrar();
+      allow read: if modoAbierto() || puedeEditar();
+      allow create, update: if (modoAbierto() || puedeEditar()) && equipoValido();
+      allow delete: if modoAbierto() || puedeBorrar();
     }
     match /registros/{doc} {
-      allow read: if puedeEditar();
-      allow create, update: if puedeEditar() && registroValido();
-      allow delete: if puedeBorrar();
+      allow read: if modoAbierto() || puedeEditar();
+      allow create, update: if (modoAbierto() || puedeEditar()) && registroValido();
+      allow delete: if modoAbierto() || puedeBorrar();
     }
     match /baterias/{doc} {
-      allow read: if puedeEditar();
-      allow create, update: if puedeEditar() && bateriaValida();
-      allow delete: if puedeBorrar();
+      allow read: if modoAbierto() || puedeEditar();
+      allow create, update: if (modoAbierto() || puedeEditar()) && bateriaValida();
+      allow delete: if modoAbierto() || puedeBorrar();
     }
     // Historial de cargas / cambios de cada bateria.
     match /baterias/{doc}/eventos/{ev} {
-      allow read: if puedeEditar();
-      allow create, update: if puedeEditar();
-      allow delete: if puedeBorrar();
+      allow read: if modoAbierto() || puedeEditar();
+      allow create, update: if modoAbierto() || puedeEditar();
+      allow delete: if modoAbierto() || puedeBorrar();
     }
     // Todo lo demas (colecciones futuras) queda cerrado
     match /{document=**} {
