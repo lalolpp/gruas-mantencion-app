@@ -29,6 +29,12 @@ async function navegar() {
       await Vistas.equipo(vista, decodeURIComponent(ruta.split('/')[2]));
     } else if (ruta === '#/nuevo') {
       await Vistas.nuevo(vista, params.get('equipo'));
+    } else if (ruta === '#/nuevo-equipo') {
+      await Vistas.nuevoEquipo(vista);
+    } else if (ruta === '#/baterias') {
+      await Vistas.baterias(vista);
+    } else if (ruta.startsWith('#/bateria/')) {
+      await Vistas.bateria(vista, decodeURIComponent(ruta.split('/')[2]));
     } else if (ruta === '#/importar') {
       await Vistas.importar(vista);
     } else if (ruta === '#/catalogo') {

@@ -19,7 +19,7 @@ Reemplaza el Excel `mantenciones gruas.xlsx`. Documentación técnica ampliada e
 
 - [x] PWA completa desplegada en Firebase Hosting
 - [x] Login con Firebase Auth (Email/contraseña activado, usuario admin creado y verificado)
-- [x] Reglas Firestore: **solo el admin (`edo.electric@gmail.com`) lee/escribe** (función `esAdmin` en `firestore.rules`); cualquier otra colección queda denegada
+- [x] Reglas Firestore: **admin (`edo.electric@gmail.com`) lee/escribe/borrar** + **encargado (`eduardo.espinoza@garatehermanos.cl`) lee/crea/edita pero no borra**; cualquier otra colección queda denegada
 - [x] **19 equipos cargados en Firestore** (G1–G14, T01–T03, BAOLI, ALZA) insertados vía REST API con token OAuth del CLI
 - [x] Dashboard con semáforo (verde >100h / amarillo ≤100h / rojo vencida / gris sin datos)
 - [x] Ficha por equipo con historial completo (trabajos/elementos/observaciones expandibles)
@@ -89,10 +89,10 @@ Reemplaza el Excel `mantenciones gruas.xlsx`. Documentación técnica ampliada e
 ## Pendientes mañana (en orden)
 
 0. ~~Cargar mantenciones actualizadas~~ ✅ HECHO (ver sesión 2026-08-23)
-1. ~~Verificar datos tras el reset de cuota~~ ✅ HECHO (804 leídos antes de la carga; conteos finales arriba)
-2. **Confirmar login**: usuario definió nueva contraseña tras el correo de reset; probar entrar.
-3. **Desplegar el rediseño a producción**: `firebase deploy --only hosting` (el rediseño GAMA FORK está SOLO en GitHub, no en gruas-mantencion-app.web.app).
-4. (Opcional) Ajustes finos de estilo que pida el usuario viendo el preview local (`python -m http.server 8123` dentro de `static/`).
+1. **Encargado debe definir su contraseña** desde el correo de reset recibido (ya enviado 2026-10-05). Verificar luego su login.
+2. **Probar en el celular** pestañas de flota, alta de equipo de arriendo (debe quedar `AR-G5` si G5 ya existe) y módulo Baterías.
+3. (Opcional) Ajustes finos de estilo que pida el usuario viendo el preview local (`python -m http.server 8123` dentro de `static/`).
+4. (Opcional, pendiente desde 2026-08-29) Repo sigue **público** con `datos.json` en el historial: (a) hacerlo privado, (b) `git filter-repo`/BFG + force-push, o (c) asumir el riesgo.
 
 ## Comandos útiles
 
@@ -121,10 +121,36 @@ cd static && python -m http.server 8080
 - Router hash simple en `app.js`; vistas registradas en objeto global `Vistas`
   - **IMPORTANTE:** `const Vistas` se declara UNA sola vez en `gruas.js`. Los demás módulos solo hacen `Vistas.x = ...` (bug histórico ya corregido: duplicarlo rompía todos los menús)
 - Colecciones Firestore:
-  - `equipos`: codigo, categoria(grua|traspaleta), marca, tipo(electrica|combustion), n_serie, intervaloHoras, dpto, operador, estado(operativa|detenido|vendida), detalle
+  - `equipos`: codigo, categoria(grua|traspaleta), marca, tipo(electrica|combustion), n_serie, intervaloHoras, dpto, operador, estado(operativa|detenido|vendida), detalle, **flota(propia|arriendo)**, **empresaArrendadora(solo arriendo)**
   - `registros`: equipo(código), fecha ISO, horometro, hProx, tipo(revision|preventiva|correctiva|recambio|accesorios|otra), empresa, responsable, supervisor, trabajos, elementos, observaciones, origen(excel|excel-v2|manual), creadoEn
+  - `baterias`: numero(manual), nSerie, **flota**, **equipo**(código), **area**, estado(vigente|en recarga|dañada|dada de baja), notas, creadoEn, actualizadoEn
+  - `baterias/{id}/eventos`: tipo(carga|cambio|reparacion|baja|alta), fecha, nota, creadoEn
+- Roles (`firestore.rules`): `esAdmin()` = edo.electric@gmail.com (lee/escribe/borrar); `esEncargado()` = eduardo.espinoza@garatehermanos.cl (lee/crea/edita, **NO borra**). `puedeEditar()` / `puedeBorrar()` son las funciones que usan las reglas.
 - Semáforo: `restantes = último hProx conocido − máximo horómetro`
 - Service worker cachea el shell (`sw.js`); firebase.json envía sw.js con no-cache
+- **Baterías es módulo nuevo** (`static/js/baterias.js`): historial en subcolección `eventos`, nunca en el doc padre
+
+## Sesión 2026-10-05 — rol Encargado, flota propia/arriendo y módulo Baterías (v8)
+
+**Decisiones del usuario:** prefijo automático en colisiones de código (AR- para arriendo, PR- para propia); pestañas Todas/Propias/Arriendo en Inicio; los 19 equipos actuales son `propia`; baterías con **estado actual + historial** y **número manual**; área `Vega` válida; Encargado crea/edita pero no borra.
+
+**Reglas (desplegadas y compiladas):**
+- `esAdmin()` (regex `(?i)^edo\\.electric@gmail\\.com$`), `esEncargado()` (regex `(?i)^eduardo\\.espinoza@garatehermanos.cl`), `puedeEditar()`, `puedeBorrar()`, `bateriaValida()`.
+- `baterias/{doc}/eventos/{ev}` con `allow create, delete` para editor; delete de la batería solo admin.
+- Deny-all `match /{document=**}` se mantiene.
+- Test de reglas: 23/23 SUCCESS con el API `firebaserules ...:test`.
+
+**Backfill:** los 19 equipos quedaron con `flota='propia'` (PATCH con `updateMask.fieldPaths=flota`, 19/19 OK, idempotente). **993 registros intactos** (801 excel + 187 excel-v2 + **5 manual**; los 2 últimos manuales son del usuario: G14 30-sep y G12 1-oct 2026).
+
+**Usuario Encargado:** creado vía Identity Platform REST (localId `ngrzeBQ6GzQHVGgU93xR9jYx6L93`) + correo de reset enviado. Contraseña la define el usuario. NO volver a imprimir passwords temporales en el chat.
+
+**Verificación con el idToken REAL del Encargado (`%TEMP%\opencode\test-encargado.mjs`):** lee equipos/registros/baterias 200, crea equipo 200, edita equipo 200, crea batería 200, **borra equipo 403**, **borra batería 403**. Docs de prueba ZZ_ENC_* limpiadas con token owner.
+
+**Código:** `db.js` (flotaDe/crear/resolverCodigo + capa `Baterias`), `auth.js` (esAdmin/esEncargado/puedeBorrar), `gruas.js` (tabs de flota, chip arriendo, borrar oculto para no-admin), `mantenciones.js` (nuevoEquipo + flota/empresa en editar), `baterias.js` (nuevo), `app.js` (rutas), `importar.js` (dropdown de equipos ahora desde Firestore, no EQUIPOS_INICIALES), `manifest.json` (iconos ?v=8), `sw.js` (gruas-v5 + baterias.js en precache). Footer v8.
+
+**Deploy:** `firebase deploy --only firestore:rules,hosting` → compile OK, hosting release complete. Checksums local==producción en los 11 archivos (`%TEMP%\opencode\verificar-deploy.mjs`).
+
+**Smoke test:** `%TEMP%\opencode\smoke.mjs` carga los 10 scripts en el mismo orden que `index.html` con stubs de DOM/firebase y ejecuta 9 vistas → todas OK. `%TEMP%\opencode\check-dups.mjs` confirma que no hay declaraciones top-level duplicadas entre scripts.
 
 ## Datos históricos relevantes (del Excel original)
 

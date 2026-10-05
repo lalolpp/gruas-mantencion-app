@@ -29,36 +29,32 @@ function chipsEquipo(e) {
   const tipoTxt = esElec ? 'Eléctrica' : 'Combustión';
   return `<span class="chip ${marcaCls}">${esc(e.marca || '—')}</span>` +
          `<span class="chip ${tipoCls}">${tipoTxt}</span>` +
+         (flotaDe(e) === FLOTA_ARRENDO ? '<span class="chip chip-arriendo">Arriendo</span>' : '') +
          (e.detalle ? `<span class="chip marca-otra">${esc(e.detalle)}</span>` : '');
 }
 
 Vistas.inicio = async el => {
   el.innerHTML = '<p class="muted">Cargando...</p>';
-  const [equipos, todosRegistros] = await Promise.all([Equipos.list(), Registros.todos()]);
+  const [todosEquipos, todosRegistros] = await Promise.all([Equipos.list(), Registros.todos()]);
   const regsPorEquipo = {};
   todosRegistros.forEach(r => {
     (regsPorEquipo[r.equipo] = regsPorEquipo[r.equipo] || []).push(r);
   });
 
-  const activos = equipos.filter(e => e.estado !== 'vendida' && e.estado !== 'dada de baja');
-  const conClase = c => activos.filter(e => calcularSemaforo(regsPorEquipo[e.codigo] || []).clase === c);
-  const grupos = {
-    equipos: { etq: 'Equipos', tit: 'Equipos activos', lista: activos, extra: '' },
-    grua: { etq: 'Grúas', tit: 'Grúas activas', lista: activos.filter(e => e.categoria === 'grua'), extra: '' },
-    traspaleta: { etq: 'Traspaletas', tit: 'Traspaletas activas', lista: activos.filter(e => e.categoria === 'traspaleta'), extra: '' },
-    verde: { etq: 'Al día', tit: 'Al día (más de 100 h para la próxima mantención)', lista: conClase('verde'), extra: 'kpi-verde' },
-    amarillo: { etq: 'Por vencer', tit: 'Por vencer (100 h o menos)', lista: conClase('amarillo'), extra: 'kpi-amarillo' },
-    rojo: { etq: 'Vencidas', tit: 'Mantención vencida', lista: conClase('rojo'), extra: 'kpi-rojo' }
-  };
+  let flotaActiva = 'todas';
 
   el.innerHTML = `
-    <div class="kpis">
-      ${Object.entries(grupos).map(([k, g]) => `
-        <button type="button" class="kpi ${g.extra}" data-kpi="${k}">
-          <span class="kpi-num">${g.lista.length}</span><span class="kpi-etq">${g.etq}</span>
-        </button>`).join('')}
+    <div class="tabs" id="tabsFlota">
+      <button type="button" class="tab activo" data-flota="todas">Todas</button>
+      <button type="button" class="tab" data-flota="propia">Propias</button>
+      <button type="button" class="tab" data-flota="arriendo">Arriendo</button>
     </div>
+    <div class="kpis" id="kpisFlota"></div>
     <div id="kpiDetalle"></div>
+    <div class="acciones-inicio">
+      <a class="btn primario" href="#/nuevo-equipo">+ Nuevo equipo</a>
+      <a class="btn" href="#/baterias">Baterías</a>
+    </div>
     <div class="filtros">
       <input id="fBusca" placeholder="Buscar código, marca, depto..." />
       <select id="fFiltro">
@@ -71,11 +67,49 @@ Vistas.inicio = async el => {
     </div>
     <div id="grilla" class="grilla"></div>`;
 
+  function pintarKPIs(equipos) {
+    const activos = equipos.filter(e => e.estado !== 'vendida' && e.estado !== 'dada de baja');
+    const conClase = c => activos.filter(e => calcularSemaforo(regsPorEquipo[e.codigo] || []).clase === c);
+    const grupos = {
+      equipos: { etq: 'Equipos', tit: 'Equipos activos', lista: activos, extra: '' },
+      grua: { etq: 'Grúas', tit: 'Grúas activas', lista: activos.filter(e => e.categoria === 'grua'), extra: '' },
+      traspaleta: { etq: 'Traspaletas', tit: 'Traspaletas activas', lista: activos.filter(e => e.categoria === 'traspaleta'), extra: '' },
+      verde: { etq: 'Al día', tit: 'Al día (más de 100 h para la próxima mantención)', lista: conClase('verde'), extra: 'kpi-verde' },
+      amarillo: { etq: 'Por vencer', tit: 'Por vencer (100 h o menos)', lista: conClase('amarillo'), extra: 'kpi-amarillo' },
+      rojo: { etq: 'Vencidas', tit: 'Mantención vencida', lista: conClase('rojo'), extra: 'kpi-rojo' }
+    };
+    $('#kpisFlota').innerHTML = Object.entries(grupos).map(([k, g]) => `
+      <button type="button" class="kpi ${g.extra}" data-kpi="${k}">
+        <span class="kpi-num">${g.lista.length}</span><span class="kpi-etq">${g.etq}</span>
+      </button>`).join('');
+
+    el.querySelectorAll('button.kpi').forEach(b => b.addEventListener('click', () => {
+      const g = grupos[b.dataset.kpi];
+      const yaEsta = b.classList.contains('seleccionado');
+      el.querySelectorAll('button.kpi.seleccionado').forEach(x => x.classList.remove('seleccionado'));
+      const det = $('#kpiDetalle');
+      if (yaEsta) { det.innerHTML = ''; return; }
+      b.classList.add('seleccionado');
+      det.innerHTML = `
+        <div class="kpi-detalle">
+          <h4>${g.tit} (${g.lista.length})</h4>
+          ${g.lista.map(e => {
+            const s = calcularSemaforo(regsPorEquipo[e.codigo] || []);
+            return `<a class="fila-eq" href="#/equipo/${encodeURIComponent(e.codigo)}">
+              <b>${esc(e.codigo)}</b>
+              <span class="badge ${s.clase}">${esc(s.texto)}</span>
+              <span class="feq-meta">${esc(e.marca || '')}${e.dpto ? ' · ' + esc(e.dpto) : ''}</span>
+            </a>`;
+          }).join('') || '<p class="muted">Ninguno.</p>'}
+        </div>`;
+    }));
+  }
+
   function pintar() {
     const busca = $('#fBusca').value.toLowerCase();
     const f = $('#fFiltro').value;
     const [tipoF, valF] = f.split(':');
-    const tarjetas = equipos
+    const tarjetas = equiposVisibles()
       .filter(e => {
         if (!f) return true;
         if (tipoF === 'cat') return e.categoria === valF;
@@ -83,7 +117,7 @@ Vistas.inicio = async el => {
       })
       .filter(e => {
         if (!busca) return true;
-        return [e.codigo, e.marca, e.tipo, e.dpto, e.operador, e.n_serie]
+        return [e.codigo, e.marca, e.tipo, e.dpto, e.operador, e.n_serie, e.empresaArrendadora]
           .join(' ').toLowerCase().includes(busca);
       })
       .map(e => {
@@ -99,33 +133,30 @@ Vistas.inicio = async el => {
           <div class="card-meta">Horómetro: <b>${s.horometro != null ? s.horometro.toLocaleString('es-CL') : '—'}</b></div>
         </a>`;
       }).join('');
-    $('#grilla').innerHTML = tarjetas || '<p class="muted">Sin resultados. Si es la primera vez, carga el catálogo en la vista Catálogo o importa tu Excel.</p>';
+    $('#grilla').innerHTML = tarjetas || '<p class="muted">Sin resultados en esta flota.</p>';
   }
 
-  el.querySelectorAll('button.kpi').forEach(b => b.addEventListener('click', () => {
-    const g = grupos[b.dataset.kpi];
-    const yaEsta = b.classList.contains('seleccionado');
-    el.querySelectorAll('button.kpi.seleccionado').forEach(x => x.classList.remove('seleccionado'));
-    const det = $('#kpiDetalle');
-    if (yaEsta) { det.innerHTML = ''; return; }
-    b.classList.add('seleccionado');
-    det.innerHTML = `
-      <div class="kpi-detalle">
-        <h4>${g.tit} (${g.lista.length})</h4>
-        ${g.lista.map(e => {
-          const s = calcularSemaforo(regsPorEquipo[e.codigo] || []);
-          return `<a class="fila-eq" href="#/equipo/${encodeURIComponent(e.codigo)}">
-            <b>${esc(e.codigo)}</b>
-            <span class="badge ${s.clase}">${esc(s.texto)}</span>
-            <span class="feq-meta">${esc(e.marca || '')}${e.dpto ? ' · ' + esc(e.dpto) : ''}</span>
-          </a>`;
-        }).join('') || '<p class="muted">Ninguno.</p>'}
-      </div>`;
+  function equiposVisibles() {
+    if (flotaActiva === 'todas') return todosEquipos;
+    return todosEquipos.filter(e => flotaDe(e) === flotaActiva);
+  }
+
+  function aplicarFlota() {
+    pintarKPIs(equiposVisibles());
+    $('#kpiDetalle').innerHTML = '';
+    pintar();
+  }
+
+  el.querySelectorAll('#tabsFlota .tab').forEach(b => b.addEventListener('click', () => {
+    el.querySelectorAll('#tabsFlota .tab').forEach(x => x.classList.remove('activo'));
+    b.classList.add('activo');
+    flotaActiva = b.dataset.flota;
+    aplicarFlota();
   }));
 
   $('#fBusca').addEventListener('input', pintar);
   $('#fFiltro').addEventListener('change', pintar);
-  pintar();
+  aplicarFlota();
 };
 
 Vistas.equipo = async (el, codigo) => {
@@ -190,7 +221,7 @@ Vistas.equipo = async (el, codigo) => {
             <td class="detalle-celda">
               ${['trabajos', 'elementos', 'observaciones'].map(k => r[k] ? `<details><summary>${k === 'trabajos' ? 'Trabajos' : k === 'elementos' ? 'Elementos cambiados' : 'Observaciones'}</summary><pre>${esc(r[k])}</pre></details>` : '').join('')}
             </td>
-            <td><button class="btn mini peligro hDel" data-i="${i}" title="Eliminar registro">✕</button></td>
+            <td>${Auth.puedeBorrar() ? `<button class="btn mini peligro hDel" data-i="${i}" title="Eliminar registro">✕</button>` : ''}</td>
           </tr>`;
 
   function pasa(r) {

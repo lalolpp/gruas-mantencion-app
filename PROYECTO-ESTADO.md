@@ -12,20 +12,43 @@ App PWA para controlar las mantenciones de grúas horquillas y traspaletas
 - [x] Ficha por equipo + historial completo con filtros
 - [x] Formulario nuevo registro (celular-friendly)
 - [x] Importador de Excel con vista previa y mapeo hoja→equipo
-- [x] **991 registros importados** (agosto 2026)
-- [x] Seguridad: Firestore solo lectura/escritura del admin
-  (ver `firestore.rules`)
+- [x] **993 registros** (801 excel + 187 excel-v2 + 5 manuales del usuario)
+- [x] **Flota propia / arriendo**: campo `flota` en equipos, prefijo automático
+  ante colisiones (`AR-G5`), pestañas Todas/Propias/Arriendo en Inicio y
+  chip de arriendo en las tarjetas
+- [x] **Alta de equipos** desde la app (vista "Nuevo equipo")
+- [x] **Módulo Baterías** con estado actual + historial de eventos
+  (carga, cambio, reparación, baja, alta), número manual y áreas
+  (incluida Vega)
+- [x] **Rol Encargado** (`eduardo.espinoza@garatehermanos.cl`): lee, crea y
+  edita, **no borra**
+- [x] Seguridad: Firestore con roles admin/encargado (ver `firestore.rules`)
 
 ## Seguridad (leer antes de tocar reglas)
 
-- `firestore.rules` permite leer/escribir **solo al email admin**
-  (`edo.electric@gmail.com`, función `esAdmin()`). Si se crea otro usuario,
-  agregarlo ahí y volver a desplegar las reglas.
+- `firestore.rules` define dos roles:
+  - `esAdmin()` = `edo.electric@gmail.com` (verificado con regex
+    `(?i)^edo\\.electric@gmail\\.com$`, **sin `toLowerCase()`**, que no existe
+    en Security Rules)
+  - `esEncargado()` = `eduardo.espinoza@garatehermanos.cl` — lee/crea/edita,
+    **no borra**
+- `puedeEditar()` / `puedeBorrar()` son las funciones que las reglas usan.
+- Los validadores (`equipoValido`, `registroValido`, `bateriaValida`) se
+  evaluan **solo en escrituras**: usar `request.resource` dentro de un
+  `allow read` rompe todo (error de evaluación → denegado).
 - Cualquier otra colección queda denegada por defecto (`match /{document=**}`).
 - El frontend expone la `apiKey` (normal en Firebase web); la protección real
   está en las reglas, no en la key.
 
 ## Desplegar cambios
+
+```powershell
+cd "C:\Users\HP\Documents\Default Project\gruas-mantencion-app"
+& "$env:APPDATA\npm\firebase.cmd" deploy --only firestore:rules,hosting --project gruas-mantencion-app --non-interactive
+```
+
+Después del deploy, comparar checksums local vs producción
+(`%TEMP%\opencode\verificar-deploy.mjs`).
 
 ## Importar el Excel
 
@@ -50,17 +73,18 @@ gruas-app/
 │   ├── js/
 │   │   ├── firebase-config.js  # ← pegar config aquí
 │   │   ├── auth.js             # login/guardián
-│   │   ├── db.js               # CRUD Firestore (equipos, registros)
+│   │   ├── db.js               # CRUD Firestore (equipos, registros, baterias)
 │   │   ├── catalogo-inicial.js # los 17 equipos
 │   │   ├── mapping.js          # nombre de hoja → código de equipo
 │   │   ├── importar.js         # parser SheetJS + UI de importación
 │   │   ├── gruas.js            # dashboard semáforo + ficha/historial
-│   │   └── mantenciones.js     # formulario nuevo registro + catálogo
+│   │   ├── mantenciones.js     # formulario nuevo registro + catálogo + alta de equipo
+│   │   └── baterias.js         # módulo de baterías e historial
 │   ├── manifest.json         # PWA
 │   ├── sw.js                 # service worker (offline shell)
 │   └── img/                  # íconos 192/512
 ├── docs/excel-formato.md     # reglas del formato de importación
-├── firestore.rules           # solo el admin lee/escribe (esAdmin)
+├── firestore.rules           # roles admin/encargado (esAdmin / esEncargado)
 └── firebase.json             # hosting (public/static) + rules
 ```
 
@@ -70,7 +94,8 @@ gruas-app/
 equipos/{autoId}
   codigo, categoria(grua|traspaleta), marca(TOYOTA|LINDE|YALE),
   tipo(electrica|combustion), n_serie, intervaloHoras,
-  dpto, operador, estado(operativa|detenido|vendida), detalle
+  dpto, operador, estado(operativa|detenido|vendida), detalle,
+  flota(propia|arriendo), empresaArrendadora(solo arriendo)
 
 registros/{autoId}
   equipo("G1"), fecha("2024-05-12"), horometro(number|null),
@@ -78,6 +103,17 @@ registros/{autoId}
   empresa, responsable, supervisor,
   trabajos(multilinea), elementos(multilinea), observaciones(multilinea),
   origen(excel|excel-v2|manual), creadoEn(serverTimestamp)
+
+baterias/{autoId}
+  numero(manual, único), nSerie, flota(propia|arriendo), equipo("G5"),
+  area(Frío|Despacho|Repaletizado|Mercado interno|Bodega|Centro de armado|
+       Packing|Vega|Recepción),
+  estado(vigente|en recarga|dañada|dada de baja), notas,
+  creadoEn, actualizadoEn
+
+baterias/{id}/eventos/{autoId}     ← historial
+  tipo(carga|cambio|reparacion|baja|alta), fecha("2026-10-05"),
+  nota, creadoEn
 ```
 
 Semáforo: `restantes = último hProx conocido − máximo horómetro`.

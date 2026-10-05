@@ -1,4 +1,4 @@
-const CACHE = 'gruas-v4';
+const CACHE = 'gruas-v5';
 const PRECACHE = [
   '/',
   '/index.html',
@@ -12,6 +12,7 @@ const PRECACHE = [
   '/js/auth.js',
   '/js/gruas.js',
   '/js/mantenciones.js',
+  '/js/baterias.js',
   '/js/importar.js',
   '/js/exportar.js',
   '/js/compartir.js',

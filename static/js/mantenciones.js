@@ -312,11 +312,14 @@ Vistas.catalogo = async el => {
           <span class="kpi-num">${g.lista.length}</span><span class="kpi-etq">${g.etq}</span>
         </button>`).join('')}
     </div>
-    <button class="btn" id="btnCargarCatalogo">Cargar catálogo inicial</button>
-    <p class="muted">Agrega los 17 equipos base si aún no existen (no duplica los ya creados).</p>
+    <div class="acciones-catalogo">
+      <a class="btn primario" href="#/nuevo-equipo">+ Nuevo equipo</a>
+      <button class="btn" id="btnCargarCatalogo">Cargar catálogo inicial</button>
+    </div>
+    <p class="muted">Cargar catálogo inicial agrega los equipos base que aún no existen (no duplica los ya creados).</p>
     <div class="tabla-wrap">
       <table class="tabla">
-        <thead><tr><th>Código</th><th>Categoría</th><th>Marca</th><th>Tipo</th><th>Serie</th><th>Intervalo</th><th>Depto</th><th>Operador</th><th>Estado</th></tr></thead>
+        <thead><tr><th>Código</th><th>Flota</th><th>Categoría</th><th>Marca</th><th>Tipo</th><th>Serie</th><th>Intervalo</th><th>Depto</th><th>Operador</th><th>Estado</th></tr></thead>
         <tbody id="catBody"></tbody>
       </table>
     </div>
@@ -331,6 +334,7 @@ Vistas.catalogo = async el => {
       : `Catálogo de equipos (${equipos.length})`;
     $('#catBody').innerHTML = lista.map(e => `<tr>
             <td><a href="#/equipo/${e.codigo}">${esc(e.codigo)}</a></td>
+            <td>${flotaDe(e) === FLOTA_ARRENDO ? 'Arriendo' : 'Propia'}</td>
             <td>${esc(e.categoria)}</td>
             <td>${esc(e.marca)}</td>
             <td>${esc(e.tipo)}</td>
@@ -339,7 +343,7 @@ Vistas.catalogo = async el => {
             <td>${esc(e.dpto)}</td>
             <td>${esc(e.operador)}</td>
             <td><span class="badge ${colorEstado(e.estado)}">${esc(e.estado || '—')}</span></td>
-          </tr>`).join('') || '<tr><td colspan="9" class="muted">Ninguno.</td></tr>';
+          </tr>`).join('') || '<tr><td colspan="10" class="muted">Ninguno.</td></tr>';
   }
 
   el.querySelectorAll('button.kpi').forEach(b => b.addEventListener('click', () => {
@@ -371,6 +375,135 @@ Vistas.catalogo = async el => {
   });
 };
 
+Vistas.nuevoEquipo = async el => {
+  el.innerHTML = '<p class="muted">Cargando...</p>';
+
+  el.innerHTML = `
+    <a href="#/" class="volver">&larr; Volver al inicio</a>
+    <h2>Nuevo equipo</h2>
+    <p class="muted">Registra una grúa o traspaleta. Si el código ya existe en la otra flota, la app le agrega un prefijo para que no se mezclen.</p>
+    <form id="frmNuevoEq" class="formulario" novalidate>
+      <div class="fila">
+        <label>Código
+          <input id="nCodigo" placeholder="Ej: G5" required />
+        </label>
+        <label>Flota
+          <select id="nFlota">
+            <option value="propia">Propia (de la empresa)</option>
+            <option value="arriendo">Arriendo</option>
+          </select>
+        </label>
+      </div>
+      <div class="fila">
+        <label>Categoría
+          <select id="nCategoria">
+            <option value="grua">grúa</option>
+            <option value="traspaleta">traspaleta</option>
+          </select>
+        </label>
+        <label>Tipo
+          <select id="nTipo">
+            <option value="electrica">eléctrica</option>
+            <option value="combustion">combustión</option>
+          </select>
+        </label>
+      </div>
+      <div class="fila">
+        <label>Marca
+          <input id="nMarca" />
+        </label>
+        <label>N° de serie
+          <input id="nSerie" />
+        </label>
+      </div>
+      <div class="fila" id="filaArrendadora" hidden>
+        <label>Empresa arrendadora
+          <input id="nArrendadora" placeholder="Ej: Linde" />
+        </label>
+        <label>Intervalo mantención (horas)
+          <input type="number" id="nIntervalo" step="any" inputmode="decimal" />
+        </label>
+      </div>
+      <div class="fila" id="filaIntervalo" hidden>
+        <label>&nbsp;</label>
+        <label>Depto / sector
+          <input id="nDpto" />
+        </label>
+      </div>
+      <div class="fila">
+        <label>Operador
+          <input id="nOperador" />
+        </label>
+        <label>Estado
+          <select id="nEstado">
+            <option value="operativa">operativa</option>
+            <option value="en mantencion">en mantención</option>
+            <option value="detenido">detenida</option>
+            <option value="vendida">vendida</option>
+            <option value="dada de baja">dada de baja</option>
+          </select>
+        </label>
+      </div>
+      <label>Detalle / nota interna
+        <textarea id="nDetalle" rows="2"></textarea>
+      </label>
+      <button class="btn primario" type="submit">Guardar equipo</button>
+      <div id="nuevoEstado"></div>
+    </form>`;
+
+  const sel = $('#nFlota');
+  function syncFlota() {
+    const arriendo = sel.value === FLOTA_ARRENDO;
+    $('#filaArrendadora').hidden = !arriendo;
+    $('#filaIntervalo').hidden = !arriendo;
+  }
+  sel.addEventListener('change', syncFlota);
+  syncFlota();
+
+  $('#frmNuevoEq').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const estado = $('#nuevoEstado');
+    const btn = ev.target.querySelector('button[type=submit]');
+    try {
+      btn.disabled = true;
+      estado.innerHTML = '<span class="muted">Guardando...</span>';
+
+      const flota = $('#nFlota').value;
+      const codigoIngresado = $('#nCodigo').value.trim();
+      if (!codigoIngresado) throw new Error('Escribe un código');
+
+      const res = await Equipos.resolverCodigo(codigoIngresado, flota);
+      if (res.error) throw new Error(res.error);
+
+      const nuevo = {
+        codigo: res.codigo,
+        flota,
+        empresaArrendadora: flota === FLOTA_ARRENDO ? $('#nArrendadora').value.trim() : '',
+        categoria: $('#nCategoria').value,
+        marca: $('#nMarca').value.trim(),
+        tipo: $('#nTipo').value,
+        n_serie: $('#nSerie').value.trim(),
+        intervaloHoras: parseFloat($('#nIntervalo').value) || null,
+        dpto: $('#nDpto').value.trim(),
+        operador: $('#nOperador').value.trim(),
+        estado: $('#nEstado').value,
+        detalle: $('#nDetalle').value.trim()
+      };
+
+      await Equipos.crear(nuevo);
+
+      const aviso = res.prefijo
+        ? ` Guardado como <b>${esc(res.codigo)}</b> (el código ${esc(res.original)} ya existe en la otra flota).`
+        : '';
+      estado.innerHTML = `<span class="ok">Equipo ${esc(res.codigo)} creado.${aviso}</span>`;
+      setTimeout(() => { location.hash = '#/equipo/' + encodeURIComponent(res.codigo); }, 700);
+    } catch (err) {
+      estado.innerHTML = `<span class="aviso">Error: ${esc(err.message)}</span>`;
+      btn.disabled = false;
+    }
+  });
+};
+
 Vistas.editar = async (el, codigo) => {
   el.innerHTML = '<p class="muted">Cargando...</p>';
   const equipo = await Equipos.byCodigo(codigo);
@@ -386,25 +519,36 @@ Vistas.editar = async (el, codigo) => {
     <h2>Editar ${esc(equipo.codigo)}</h2>
     <form id="frmEq" class="formulario" novalidate>
       <div class="fila">
+        <label>Flota
+          <select id="eFlota">
+            <option value="propia" ${sel('propia', flotaDe(equipo))}>Propia (de la empresa)</option>
+            <option value="arriendo" ${sel('arriendo', flotaDe(equipo))}>Arriendo</option>
+          </select>
+        </label>
         <label>Categoría
           <select id="eCategoria">
             <option value="grua" ${sel('grua', equipo.categoria)}>grúa</option>
             <option value="traspaleta" ${sel('traspaleta', equipo.categoria)}>traspaleta</option>
           </select>
         </label>
+      </div>
+      <div class="fila">
         <label>Marca
           <input id="eMarca" value="${esc(equipo.marca || '')}" />
         </label>
-      </div>
-      <div class="fila">
         <label>Tipo
           <select id="eTipo">
             <option value="electrica" ${sel('electrica', equipo.tipo)}>eléctrica</option>
             <option value="combustion" ${sel('combustion', equipo.tipo)}>combustión</option>
           </select>
         </label>
+      </div>
+      <div class="fila">
         <label>N° de serie
           <input id="eSerie" value="${esc(equipo.n_serie || '')}" />
+        </label>
+        <label>Empresa arrendadora
+          <input id="eArrendadora" value="${esc(equipo.empresaArrendadora || '')}" placeholder="Solo si es de arriendo" />
         </label>
       </div>
       <div class="fila">
@@ -440,8 +584,11 @@ Vistas.editar = async (el, codigo) => {
     ev.preventDefault();
     const estado = $('#edEstado');
     try {
+      const flota = $('#eFlota').value;
       await Equipos.upsert({
         codigo: equipo.codigo,
+        flota,
+        empresaArrendadora: flota === FLOTA_ARRENDO ? $('#eArrendadora').value.trim() : '',
         categoria: $('#eCategoria').value,
         marca: $('#eMarca').value.trim(),
         tipo: $('#eTipo').value,

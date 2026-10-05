@@ -182,7 +182,17 @@ const Importador = (() => {
   }
 
   function mostrarResultado(contenedor, hojas) {
-    const codigos = EQUIPOS_INICIALES.map(e => e.codigo);
+    // Se usan los equipos reales de Firestore (no solo la lista inicial) para que
+    // tambien aparezcan los creados desde la app, incluidas las flotas de arriendo.
+    Equipos.list().then(equipos => {
+      renderResultado(contenedor, hojas, equipos);
+    }).catch(() => {
+      renderResultado(contenedor, hojas, EQUIPOS_INICIALES.map(e => ({ ...e })));
+    });
+  }
+
+  function renderResultado(contenedor, hojas, equipos) {
+    const codigos = equipos.map(e => e.codigo);
     let totalRegs = 0;
 
     let html = '<table class="tabla"><thead><tr><th>Hoja</th><th>Equipo destino</th><th>Registros</th></tr></thead><tbody>';
@@ -236,7 +246,7 @@ const Importador = (() => {
           const existe = await Equipos.byCodigo(c);
           if (!existe) {
             const base = EQUIPOS_INICIALES.find(e => e.codigo === c);
-            await Equipos.upsert(base || { codigo: c, categoria: 'grua', estado: 'operativa' });
+            await Equipos.upsert({ flota: FLOTA_PROPIA, ...(base || { codigo: c, categoria: 'grua', estado: 'operativa' }) });
             equiposNuevos++;
           }
         }

@@ -1,13 +1,27 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Unico admin de la app (email/password). Si se crea otro usuario,
-    // agregarlo a esta funcion. Comparacion insensible a mayusculas/minusculas
-    // (ej: gmail permite variantes de caso).
+    // Roles:
+    //   esAdmin()    -> edo.electric@gmail.com (control total, incl. borrar)
+    //   esEncargado()-> puede leer, crear y editar, pero NO borrar
+    // Comparacion insensible a mayusculas/minusculas (gmail permite variantes de caso).
     function esAdmin() {
       return request.auth != null
         && request.auth.token.email is string
         && request.auth.token.email.matches('(?i)^edo\\.electric@gmail\\.com$');
+    }
+    function esEncargado() {
+      return request.auth != null
+        && request.auth.token.email is string
+        && request.auth.token.email.matches('(?i)^eduardo\\.espinoza@garatehermanos\\.cl$');
+    }
+    // Admin o Encargado: lectura y creacion/edicion.
+    function puedeEditar() {
+      return esAdmin() || esEncargado();
+    }
+    // Solo admin: eliminar.
+    function puedeBorrar() {
+      return esAdmin();
     }
     function equipoValido() {
       return request.resource.data.codigo is string
@@ -17,15 +31,30 @@ service cloud.firestore {
       return request.resource.data.equipo is string
         && request.resource.data.fecha is string;
     }
+    function bateriaValida() {
+      return request.resource.data.numero is string
+        && request.resource.data.numero.size() > 0;
+    }
     match /equipos/{doc} {
-      allow read: if esAdmin();
-      allow create, update: if esAdmin() && equipoValido();
-      allow delete: if esAdmin();
+      allow read: if puedeEditar();
+      allow create, update: if puedeEditar() && equipoValido();
+      allow delete: if puedeBorrar();
     }
     match /registros/{doc} {
-      allow read: if esAdmin();
-      allow create, update: if esAdmin() && registroValido();
-      allow delete: if esAdmin();
+      allow read: if puedeEditar();
+      allow create, update: if puedeEditar() && registroValido();
+      allow delete: if puedeBorrar();
+    }
+    match /baterias/{doc} {
+      allow read: if puedeEditar();
+      allow create, update: if puedeEditar() && bateriaValida();
+      allow delete: if puedeBorrar();
+    }
+    // Historial de cargas / cambios de cada bateria.
+    match /baterias/{doc}/eventos/{ev} {
+      allow read: if puedeEditar();
+      allow create, update: if puedeEditar();
+      allow delete: if puedeBorrar();
     }
     // Todo lo demas (colecciones futuras) queda cerrado
     match /{document=**} {
