@@ -138,7 +138,18 @@ h3 { margin: 20px 0 8px; }
 }
 .filtros input { flex: 1 1 220px; min-width: 0; }
 .filtros select { flex: 0 0 auto; min-width: 130px; }
-.filtros small { flex: 1 1 100%; margin-top: 2px; }
+.filtros input,
+.filtros select {
+  font-size: .92rem;
+  padding: 10px 12px;
+}
+.filtros small {
+  flex: 1 1 100%;
+  margin-top: 2px;
+  line-height: 1.2;
+  padding: 0 2px;
+  word-break: break-word;
+}
 
 input, select, textarea {
   width: 100%;
@@ -261,7 +272,16 @@ button.kpi:hover { border-color: rgba(124, 58, 237, .45); box-shadow: 0 0 12px r
   white-space: nowrap;
   border: 1px solid transparent;
 }
-.badge.grande { font-size: .95rem; padding: 6px 14px; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.badge.grande {
+  font-size: .95rem;
+  padding: 6px 14px;
+  white-space: normal;
+  word-break: break-word;
+  text-align: center;
+  max-width: 100%;
+  overflow: visible;
+  text-overflow: initial;
+}
 .badge.verde {
   background: #d1fae5; color: var(--verde); border-color: #6ee7b7;
   box-shadow: 0 0 8px rgba(16, 185, 129, .35);
@@ -311,14 +331,29 @@ button.kpi:hover { border-color: rgba(124, 58, 237, .45); box-shadow: 0 0 12px r
   border-radius: 16px;
   padding: 16px 18px;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 12px;
-  flex-wrap: wrap;
   margin-bottom: 14px;
   box-shadow: 0 1px 8px rgba(28, 33, 64, .06);
 }
+
+@media (min-width: 720px) {
+  .ficha { flex-direction: row; justify-content: space-between; align-items: flex-start; }
+}
 .ficha h2 small { font-weight: 400; color: var(--muted); font-size: .85rem; display: block; }
-.ficha-derecha { text-align: right; font-size: .85rem; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; min-width: 150px; max-width: min(60vw, 250px); overflow-wrap: anywhere; word-break: break-word; }
+.ficha-derecha {
+  text-align: right;
+  font-size: .85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
 
 /* ---------- Botones ---------- */
 
