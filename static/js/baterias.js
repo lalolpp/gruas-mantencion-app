@@ -113,6 +113,15 @@ Vistas.bateriaForm = async (el, id) => {
   const b = id ? await Baterias.porId(id) : null;
   if (id && !b) { el.innerHTML = '<p>Batería no encontrada. <a href="#/baterias">Volver</a></p>'; return; }
 
+  // Lista real de equipos: el campo "equipo" se guarda con el codigo exacto
+  // (G3, AR-G16...) porque el historial y los enlaces dependen de esa coincidencia.
+  const todos = await Equipos.list();
+  const valorEquipo = b ? b.equipo || '' : '';
+  // Si el valor guardado no esta en la lista, se agrega para no borrarlo al guardar.
+  const opcionesEquipo = [...todos.map(e => e.codigo)]
+    .concat(valorEquipo && !todos.some(e => e.codigo === valorEquipo) ? [valorEquipo] : [])
+    .sort(cmpCodigo);
+
   el.innerHTML = `
     <a href="#/baterias" class="volver">&larr; Volver a Baterías</a>
     <h2>${b ? 'Editar batería ' + esc(b.numero) : 'Nueva batería'}</h2>
@@ -141,7 +150,10 @@ Vistas.bateriaForm = async (el, id) => {
       </div>
       <div class="fila">
         <label>Equipo asociado
-          <input id="bEquipo" value="${esc(b ? b.equipo : '')}" placeholder="Código de grúa (opcional)" />
+          <select id="bEquipo">
+            <option value="">— sin asociar —</option>
+            ${opcionesEquipo.map(c => `<option value="${esc(c)}" ${valorEquipo === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}
+          </select>
         </label>
         <label>Estado
           <select id="bEstadoSel">

@@ -257,7 +257,7 @@ button.kpi:hover { border-color: rgba(124, 58, 237, .45); box-shadow: 0 0 12px r
   white-space: nowrap;
   border: 1px solid transparent;
 }
-.badge.grande { font-size: .95rem; padding: 6px 14px; }
+.badge.grande { font-size: .95rem; padding: 6px 14px; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .badge.verde {
   background: #d1fae5; color: var(--verde); border-color: #6ee7b7;
   box-shadow: 0 0 8px rgba(16, 185, 129, .35);
@@ -314,7 +314,7 @@ button.kpi:hover { border-color: rgba(124, 58, 237, .45); box-shadow: 0 0 12px r
   box-shadow: 0 1px 8px rgba(28, 33, 64, .06);
 }
 .ficha h2 small { font-weight: 400; color: var(--muted); font-size: .85rem; display: block; }
-.ficha-derecha { text-align: right; font-size: .85rem; }
+.ficha-derecha { text-align: right; font-size: .85rem; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; min-width: 150px; max-width: min(60vw, 250px); overflow-wrap: anywhere; word-break: break-word; }
 
 /* ---------- Botones ---------- */
 
