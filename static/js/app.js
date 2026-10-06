@@ -74,5 +74,30 @@ Auth.guard().then(user => {
 }).catch(() => { location.replace('login.html'); });
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    let newWorker = null;
+    const showUpdateBanner = () => {
+      if (document.getElementById('swUpdateBanner')) return;
+      const wrap = document.createElement('div');
+      wrap.id = 'swUpdateBanner';
+      wrap.className = 'sw-update';
+      wrap.innerHTML = '<span>Hay una actualización disponible</span><button class="btn primario" id="swUpdateBtn">Recargar</button>';
+      document.body.appendChild(wrap);
+      document.getElementById('swUpdateBtn').addEventListener('click', () => {
+        if (newWorker) newWorker.postMessage({ type: 'SKIP_WAITING' });
+        else window.location.reload();
+      });
+    };
+    if (reg.waiting) { newWorker = reg.waiting; showUpdateBanner(); }
+    reg.addEventListener('updatefound', () => {
+      const installing = reg.installing;
+      if (!installing) return;
+      installing.addEventListener('statechange', () => {
+        if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+          newWorker = installing; showUpdateBanner();
+        }
+      });
+    });
+    navigator.serviceWorker.addEventListener('controllerchange', () => { window.location.reload(); });
+  }).catch(() => {});
 }

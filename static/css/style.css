@@ -390,10 +390,38 @@ button.kpi:hover { border-color: rgba(124, 58, 237, .45); box-shadow: 0 0 12px r
   box-shadow: 0 0 10px rgba(220, 38, 38, .25);
 }
 
-/* ---------- Tablas ---------- */
+/* ---------- Aviso de actualización PWA ---------- */
+.sw-update {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: var(--superficie);
+  border: 1px solid rgba(124, 58, 237, .45);
+  color: var(--texto);
+  padding: 8px 10px 8px 14px;
+  border-radius: 999px;
+  box-shadow: 0 10px 40px rgba(28, 33, 64, .28);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(92vw, 380px);
+  font-size: .92rem;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
 
-.tabla-wrap { overflow-x: auto; border-radius: 12px; }
-.tabla {
+.sw-update span {
+  line-height: 1.25;
+  padding: 0 4px;
+}
+
+.sw-update .btn {
+  padding: 6px 12px;
+  font-size: .85rem;
+  white-space: nowrap;
+}
   width: 100%;
   border-collapse: collapse;
   background: var(--superficie);
