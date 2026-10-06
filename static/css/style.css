@@ -131,10 +131,14 @@ h3 { margin: 20px 0 8px; }
 
 .filtros {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 14px;
+  align-items: flex-end;
 }
-.filtros input { flex: 1; }
+.filtros input { flex: 1 1 220px; min-width: 0; }
+.filtros select { flex: 0 0 auto; min-width: 130px; }
+.filtros small { flex: 1 1 100%; margin-top: 2px; }
 
 input, select, textarea {
   width: 100%;

@@ -81,7 +81,7 @@ Vistas.inicio = async el => {
       <a class="btn" href="#/baterias">Baterías</a>
     </div>
     <div class="filtros">
-      <input id="fBusca" placeholder="Buscar código, marca, depto..." />
+      <input id="fBusca" placeholder="Buscar código, marca, depto, operador, serie..." />
       <select id="fFiltro">
         <option value="">Todo</option>
         <option value="cat:grua">Grúas</option>
@@ -89,6 +89,7 @@ Vistas.inicio = async el => {
         <option value="marca:Linde">Linde</option>
         <option value="marca:Toyota">Toyota</option>
       </select>
+      <small class="muted">Filtrar por nombre/código/marca/depto</small>
     </div>
     <div id="grilla" class="grilla"></div>`;
 
