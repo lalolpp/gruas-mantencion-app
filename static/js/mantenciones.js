@@ -282,6 +282,107 @@ Vistas.nuevo = async (el, equipoCodigo) => {
   });
 };
 
+Vistas.editarRegistro = async (el, id) => {
+  el.innerHTML = '<p class="muted">Cargando...</p>';
+  const reg = await Registros.porId(id);
+  if (!reg) {
+    el.innerHTML = '<p>Registro no encontrado. <a href="#/">Volver al inicio</a></p>';
+    return;
+  }
+  const equipos = await Equipos.list();
+  if (!equipos.some(e => e.codigo === reg.equipo)) {
+    equipos.unshift({ codigo: reg.equipo, marca: '', tipo: '' });
+  }
+  const sel = (v, actual) => v === actual ? 'selected' : '';
+
+  el.innerHTML = `
+    <a href="#/equipo/${encodeURIComponent(reg.equipo)}" class="volver">&larr; Volver a ${esc(reg.equipo)}</a>
+    <h2>Editar registro</h2>
+    <p class="muted">Registro del ${esc(reg.fecha || '(sin fecha)')} de ${esc(reg.equipo)}.</p>
+    <form id="frmRegEdit" class="formulario">
+      <label>Equipo
+        <select id="rEquipo" required>
+          ${equipos.map(e => `<option value="${esc(e.codigo)}" ${sel(e.codigo, reg.equipo)}>${esc(e.codigo)}${e.marca ? ' · ' + esc(e.marca) + ' ' + esc(e.tipo) : ''}</option>`).join('')}
+        </select>
+      </label>
+      <div class="fila">
+        <label>Fecha
+          <input type="date" id="rFecha" value="${esc(reg.fecha || '')}" required />
+        </label>
+        <label>Horómetro (h)
+          <input type="number" id="rHorometro" min="0" step="0.1" inputmode="decimal" value="${reg.horometro != null ? esc(reg.horometro) : ''}" />
+        </label>
+      </div>
+      <div class="fila">
+        <label>Tipo
+          <select id="rTipo">
+            ${TIPOS.map(t => `<option value="${t}" ${sel(t, reg.tipo)}>${t}</option>`).join('')}
+          </select>
+        </label>
+        <label>Empresa responsable
+          <input id="rEmpresa" list="listaEmpresas" value="${esc(reg.empresa || '')}" placeholder="Interna si es revisión propia" />
+          <datalist id="listaEmpresas">
+            ${EMPRESAS_SUGERIDAS.map(e => `<option value="${e}"></option>`).join('')}
+          </datalist>
+        </label>
+      </div>
+      <div class="fila">
+        <label>Responsable
+          <input id="rResponsable" value="${esc(reg.responsable || '')}" />
+        </label>
+        <label>Supervisor
+          <input id="rSupervisor" value="${esc(reg.supervisor || '')}" />
+        </label>
+      </div>
+      <label>Trabajos realizados
+        <textarea id="rTrabajos" rows="3" placeholder="Una línea por trabajo...">${esc(reg.trabajos || '')}</textarea>
+      </label>
+      <label>Elementos cambiados
+        <textarea id="rElementos" rows="2">${esc(reg.elementos || '')}</textarea>
+      </label>
+      <label>Observaciones
+        <textarea id="rObservaciones" rows="2">${esc(reg.observaciones || '')}</textarea>
+      </label>
+      <label>Próxima mantención (horas)
+        <input type="number" id="rHProx" min="0" step="0.1" inputmode="decimal" value="${reg.hProx != null ? esc(reg.hProx) : ''}" placeholder="Ej: horómetro + intervalo" />
+      </label>
+      <button class="btn primario" type="submit">Guardar cambios</button>
+      <div id="regEstado"></div>
+    </form>`;
+
+  $('#frmRegEdit').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const estado = $('#regEstado');
+    const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+    const btn = ev.target.querySelector('button[type=submit]');
+    try {
+      btn.disabled = true;
+      const cambios = {
+        equipo: $('#rEquipo').value,
+        fecha: $('#rFecha').value,
+        horometro: num($('#rHorometro').value),
+        hProx: num($('#rHProx').value),
+        tipo: $('#rTipo').value,
+        empresa: $('#rEmpresa').value.trim(),
+        responsable: $('#rResponsable').value.trim(),
+        supervisor: $('#rSupervisor').value.trim(),
+        trabajos: $('#rTrabajos').value.trim(),
+        elementos: $('#rElementos').value.trim(),
+        observaciones: $('#rObservaciones').value.trim()
+      };
+      await Registros.actualizar(id, cambios);
+      const eq = equipos.find(x => x.codigo === cambios.equipo);
+      estado.innerHTML = `<span class="ok">Guardado.</span>
+        <a class="btn mini" href="#/equipo/${encodeURIComponent(cambios.equipo)}">Ir a la ficha de ${esc(cambios.equipo)}</a>
+        <button class="btn mini" id="btnPdfRegEdit" type="button">Descargar PDF</button>`;
+      $('#btnPdfRegEdit').addEventListener('click', () => generarPDFRegistro({ ...reg, ...cambios }, eq));
+    } catch (err) {
+      estado.innerHTML = `<span class="aviso">Error: ${esc(err.message)}</span>`;
+      btn.disabled = false;
+    }
+  });
+};
+
 Vistas.catalogo = async el => {
   el.innerHTML = '<p class="muted">Cargando...</p>';
   const equipos = await Equipos.list();

@@ -86,8 +86,16 @@ const Registros = {
     return this._cache;
   },
   invalidar() { this._cache = null; },
+  async porId(id) {
+    const d = await db.collection('registros').doc(id).get();
+    return d.exists ? { id: d.id, ...d.data() } : null;
+  },
   async eliminar(id) {
     await db.collection('registros').doc(id).delete();
+    this.invalidar();
+  },
+  async actualizar(id, cambios) {
+    await db.collection('registros').doc(id).set(sinIndefinidos(cambios), { merge: true });
     this.invalidar();
   },
   async add(reg) {

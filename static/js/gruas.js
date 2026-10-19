@@ -253,7 +253,8 @@ Vistas.equipo = async (el, codigo) => {
             <td class="detalle-celda">
               ${['trabajos', 'elementos', 'observaciones'].map(k => r[k] ? `<details><summary>${k === 'trabajos' ? 'Trabajos' : k === 'elementos' ? 'Elementos cambiados' : 'Observaciones'}</summary><pre>${esc(r[k])}</pre></details>` : '').join('')}
             </td>
-            <td>${Auth.puedeBorrar() ? `<button class="btn mini peligro hDel" data-i="${i}" title="Eliminar registro">✕</button>` : ''}</td>
+            <td>${Auth.puedeBorrar() ? `<button class="btn mini peligro hDel" data-i="${i}" title="Eliminar registro">✕</button>` : ''}
+              <button class="btn mini hEdit" data-i="${i}" title="Editar este registro" hidden>Editar</button></td>
           </tr>`;
 
   function pasa(r) {
@@ -272,6 +273,10 @@ Vistas.equipo = async (el, codigo) => {
     $('#histBody').innerHTML = visibles.map((r, i) => filaHTML(r, i)).join('')
       || '<tr><td colspan="9" class="muted">Sin resultados con esos filtros</td></tr>';
     document.querySelectorAll('.hSel').forEach(c => c.addEventListener('change', actualizarExpSel));
+    document.querySelectorAll('.hEdit').forEach(b => b.addEventListener('click', () => {
+      const r = visibles[+b.dataset.i];
+      if (r) location.hash = '#/editar-registro/' + encodeURIComponent(r.id);
+    }));
     document.querySelectorAll('.hDel').forEach(b => b.addEventListener('click', async () => {
       const r = visibles[+b.dataset.i];
       if (!r) return;
@@ -295,6 +300,11 @@ Vistas.equipo = async (el, codigo) => {
   }
 
   function actualizarExpSel() {
+    document.querySelectorAll('#histBody tr').forEach(tr => {
+      const chk = tr.querySelector('.hSel');
+      const ed = tr.querySelector('.hEdit');
+      if (chk && ed && Auth.puedeEditar()) ed.hidden = !chk.checked;
+    });
     $('#btnExpSel').disabled = !document.querySelector('.hSel:checked');
   }
 
