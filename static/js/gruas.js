@@ -58,6 +58,77 @@ function chipsEquipo(e) {
          (e.detalle ? `<span class="chip marca-otra">${esc(e.detalle)}</span>` : '');
 }
 
+// Modal para ver el detalle completo de un registro (trabajos, repuestos,
+// observaciones) sin quedar aprisionado en la columna angosta de la tabla.
+function abrirModalRegistro(reg, equipo) {
+  const prev = document.getElementById('modalRegistro');
+  if (prev) prev.remove();
+
+  const campo = (etq, val) => `<div class="modal-campo"><span class="modal-campo-etq">${etq}</span><b>${val}</b></div>`;
+  const seccion = (titulo, texto) => texto ? `
+    <div class="modal-seccion">
+      <div class="modal-seccion-titulo">${titulo}</div>
+      <div class="modal-seccion-texto">${esc(texto)}</div>
+    </div>` : '';
+
+  const modal = document.createElement('div');
+  modal.id = 'modalRegistro';
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-cuerpo" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div>
+          <h3 style="margin:0">${esc(reg.equipo || '')}${reg.fecha ? ' · ' + esc(reg.fecha) : ''}</h3>
+          <div class="chips" style="margin-top:6px">
+            ${reg.tipo ? `<span class="chip">${esc(reg.tipo)}</span>` : ''}
+            ${reg.empresa ? `<span class="chip marca-otra">${esc(reg.empresa)}</span>` : ''}
+          </div>
+        </div>
+        <button class="btn mini" data-cerrar aria-label="Cerrar">&times;</button>
+      </div>
+
+      <div class="modal-meta">
+        ${campo('Horómetro', reg.horometro != null ? reg.horometro.toLocaleString('es-CL') + ' h' : '—')}
+        ${campo('Próx. mantención', reg.hProx != null ? reg.hProx.toLocaleString('es-CL') + ' h' : '—')}
+        ${campo('Responsable', esc(reg.responsable || '—'))}
+        ${campo('Supervisor', esc(reg.supervisor || '—'))}
+        ${campo('Origen', esc(reg.origen || '—'))}
+      </div>
+
+      ${seccion('Trabajos realizados', reg.trabajos)}
+      ${seccion('Repuestos utilizados', reg.elementos)}
+      ${seccion('Observaciones', reg.observaciones)}
+      ${(!reg.trabajos && !reg.elementos && !reg.observaciones) ? '<p class="muted">Este registro no tiene detalle de trabajos, repuestos ni observaciones.</p>' : ''}
+
+      <div class="modal-pie">
+        <button class="btn primario mini" data-editar>Editar</button>
+        <button class="btn mini" data-pdf>Descargar PDF</button>
+        <button class="btn mini" data-cerrar>Cerrar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  const cerrar = () => {
+    document.removeEventListener('keydown', alEsc);
+    modal.remove();
+  };
+  const alEsc = ev => { if (ev.key === 'Escape') cerrar(); };
+  document.addEventListener('keydown', alEsc);
+  modal.addEventListener('click', ev => { if (ev.target === modal) cerrar(); });
+  modal.querySelectorAll('[data-cerrar]').forEach(b => b.addEventListener('click', cerrar));
+
+  const bEdit = modal.querySelector('[data-editar]');
+  if (bEdit) bEdit.addEventListener('click', () => {
+    cerrar();
+    location.hash = '#/editar-registro/' + encodeURIComponent(reg.id);
+  });
+
+  const bPdf = modal.querySelector('[data-pdf]');
+  if (bPdf) bPdf.addEventListener('click', () => {
+    if (typeof generarPDFRegistro === 'function') generarPDFRegistro(reg, equipo);
+  });
+}
+
 Vistas.inicio = async el => {
   el.innerHTML = '<p class="muted">Cargando...</p>';
   const [todosEquipos, todosRegistros] = await Promise.all([Equipos.list(), Registros.todos()]);
@@ -251,7 +322,7 @@ Vistas.equipo = async (el, codigo) => {
             <td>${esc(r.empresa || '')}</td>
             <td>${esc(r.responsable || '')}</td>
             <td class="detalle-celda">
-              ${['trabajos', 'elementos', 'observaciones'].map(k => r[k] ? `<details><summary>${k === 'trabajos' ? 'Trabajos' : k === 'elementos' ? 'Elementos cambiados' : 'Observaciones'}</summary><pre>${esc(r[k])}</pre></details>` : '').join('')}
+              <button class="btn mini hDetalle" data-i="${i}" title="Ver detalle completo">Detalle</button>
             </td>
             <td>${Auth.puedeBorrar() ? `<button class="btn mini peligro hDel" data-i="${i}" title="Eliminar registro">✕</button>` : ''}
               <button class="btn mini hEdit" data-i="${i}" title="Editar este registro" hidden>Editar</button></td>
@@ -276,6 +347,10 @@ Vistas.equipo = async (el, codigo) => {
     document.querySelectorAll('.hEdit').forEach(b => b.addEventListener('click', () => {
       const r = visibles[+b.dataset.i];
       if (r) location.hash = '#/editar-registro/' + encodeURIComponent(r.id);
+    }));
+    document.querySelectorAll('.hDetalle').forEach(b => b.addEventListener('click', () => {
+      const r = visibles[+b.dataset.i];
+      if (r) abrirModalRegistro(r, equipo);
     }));
     document.querySelectorAll('.hDel').forEach(b => b.addEventListener('click', async () => {
       const r = visibles[+b.dataset.i];

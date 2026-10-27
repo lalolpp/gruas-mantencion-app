@@ -445,17 +445,88 @@ button.kpi:hover { border-color: rgba(124, 58, 237, .45); box-shadow: 0 0 12px r
   font-weight: 800;
 }
 .tabla tbody tr:hover td { background: #fafbff; }
-.detalle-celda details { margin-bottom: 4px; }
-.detalle-celda summary { cursor: pointer; color: var(--violeta); font-size: .8rem; font-weight: 600; }
-.detalle-celda pre {
+.detalle-celda { text-align: center; }
+
+/* ---------- Modal de detalle de registro ---------- */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, .55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 2000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 12px;
+  overflow-y: auto;
+}
+
+.modal-cuerpo {
+  background: var(--superficie);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, .35);
+  width: min(720px, 100%);
+  max-width: 720px;
+  padding: 18px 20px 16px;
+  margin: auto;
+  border: 1px solid var(--borde);
+}
+
+.modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--borde);
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+}
+.modal-head h3 { font-size: 1.15rem; color: var(--texto); }
+
+.modal-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px 16px;
+  margin-bottom: 14px;
+}
+.modal-campo { display: flex; flex-direction: column; gap: 2px; }
+.modal-campo-etq { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 700; }
+.modal-campo b { font-size: .92rem; color: var(--texto); }
+
+.modal-seccion { margin-bottom: 12px; }
+.modal-seccion-titulo {
+  display: inline-block;
+  background: var(--azul);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  margin-bottom: 6px;
+}
+.modal-seccion-texto {
   white-space: pre-wrap;
   word-break: break-word;
   background: #f6f8ff;
-  padding: 8px;
-  border-radius: 8px;
-  font-size: .78rem;
-  max-width: 420px;
   border-left: 3px solid var(--cian);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: .9rem;
+  line-height: 1.5;
+  color: var(--texto);
+}
+
+.modal-pie {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  border-top: 1px solid var(--borde);
+  padding-top: 12px;
+  margin-top: 6px;
 }
 .fila-avisos td { background: #fffbe8; }
 
