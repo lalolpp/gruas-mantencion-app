@@ -1,4 +1,4 @@
-const CACHE = 'gruas-v15';
+const CACHE = 'gruas-v16';
 const PRECACHE = [
   '/',
   '/index.html',
@@ -42,7 +42,11 @@ self.addEventListener('fetch', ev => {
   if (url.origin !== location.origin || ev.request.method !== 'GET') return;
 
   ev.respondWith(
-    fetch(ev.request)
+    // 'no-cache' fuerza revalidacion con el servidor (no usa la caché HTTP
+    // del navegador). Sin esto, si el navegador tiene gruas.js cacheado
+    // (max-age=1h) sirve el JS viejo aunque ya exista una version nueva.
+    // Si no hay red, fetch rechaza y cae al cache offline de abajo.
+    fetch(ev.request, { cache: 'no-cache' })
       .then(res => {
         const copia = res.clone();
         caches.open(CACHE).then(c => c.put(ev.request, copia));
