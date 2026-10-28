@@ -74,6 +74,55 @@ const Equipos = {
       return existente.id;
     }
     return this.crear(datos);
+  },
+  // Renombrar el codigo de un equipo ya creado (p. ej. corregir "A10" -> "AR10").
+  // El codigo es la identidad del equipo en toda la app: los registros y las
+  // baterias lo guardan como texto ("equipo"), asi que hay que actualizarlos
+  // en cascada o quedan huerfanos. Devuelve cuantas cosas se movieron.
+  async renombrar(equipoId, codigoNuevo) {
+    const nuevo = String(codigoNuevo || '').trim();
+    if (!nuevo) throw new Error('El codigo no puede quedar vacio');
+    const docEq = db.collection('equipos').doc(equipoId);
+    const snapEq = await docEq.get();
+    if (!snapEq.exists) throw new Error('Equipo no encontrado');
+    const anterior = snapEq.data().codigo;
+    if (nuevo === anterior) return { cambios: 0, anterior, nuevo };
+
+    // No pisar otro equipo que ya use ese codigo.
+    const choque = await this.byCodigo(nuevo);
+    if (choque && choque.id !== equipoId) {
+      throw new Error(`Ya existe un equipo con el codigo ${nuevo}`);
+    }
+
+    let cambios = 0;
+    // Registros de mantencion del equipo (batch de a 400, max. Firestore).
+    const snapRegs = await db.collection('registros')
+      .where('equipo', '==', anterior).get();
+    let lote = db.batch();
+    let n = 0;
+    for (const d of snapRegs.docs) {
+      lote.update(d.ref, { equipo: nuevo });
+      if (++n === 400) { await lote.commit(); cambios += n; lote = db.batch(); n = 0; }
+    }
+    if (n > 0) { await lote.commit(); cambios += n; }
+
+    // Baterias asociadas al equipo.
+    const snapBats = await db.collection('baterias')
+      .where('equipo', '==', anterior).get();
+    let lb = db.batch();
+    let nb = 0;
+    for (const d of snapBats.docs) {
+      lb.update(d.ref, { equipo: nuevo });
+      if (++nb === 400) { await lb.commit(); cambios += nb; lb = db.batch(); nb = 0; }
+    }
+    if (nb > 0) { await lb.commit(); cambios += nb; }
+
+    // Por ultimo el equipo mismo: si algo fallo antes, el equipo conserva su
+    // codigo viejo y nada queda apuntando a un codigo inexistente.
+    await docEq.update({ codigo: nuevo });
+    Registros.invalidar();
+    Baterias.invalidar();
+    return { cambios, anterior, nuevo };
   }
 };
 

@@ -635,6 +635,9 @@ Vistas.editar = async (el, codigo) => {
     <h2>Editar ${esc(equipo.codigo)}</h2>
     <form id="frmEq" class="formulario" novalidate>
       <div class="fila">
+        <label>Código del equipo
+          <input id="eCodigo" value="${esc(equipo.codigo)}" />
+        </label>
         <label>Flota
           <select id="eFlota">
             <option value="propia" ${sel('propia', flotaDe(equipo))}>Propia (de la empresa)</option>
@@ -648,6 +651,10 @@ Vistas.editar = async (el, codigo) => {
           </select>
         </label>
       </div>
+      <p class="muted" style="font-size:.78rem;margin:-4px 0 6px">
+        Si corriges el código (p. ej. "A10" → "AR10") se renombra el equipo y sus
+        registros y baterías asociados pasan al código nuevo.
+      </p>
       <div class="fila">
         <label>Marca
           <input id="eMarca" value="${esc(equipo.marca || '')}" />
@@ -711,10 +718,19 @@ Vistas.editar = async (el, codigo) => {
   $('#frmEq').addEventListener('submit', async ev => {
     ev.preventDefault();
     const estado = $('#edEstado');
+    const btn = ev.target.querySelector('button[type=submit]');
     try {
+      btn.disabled = true;
       const flota = $('#eFlota').value;
+      let codigoNuevo = $('#eCodigo').value.trim();
+      if (!codigoNuevo) throw new Error('El código no puede quedar vacío');
+      // Si el codigo elegido ya existe en la OTRA flota, se prefija (AR10 -> AR-AR10)
+      // igual que al crear equipos, para no chocar.
+      const res = await Equipos.resolverCodigo(codigoNuevo, flota);
+      if (res.error) throw new Error(res.error);
+      codigoNuevo = res.codigo;
       await Equipos.upsert({
-        codigo: equipo.codigo,
+        codigo: codigoNuevo,
         flota,
         empresaArrendadora: flota === FLOTA_ARRENDO ? $('#eArrendadora').value.trim() : '',
         categoria: $('#eCategoria').value,
@@ -729,10 +745,19 @@ Vistas.editar = async (el, codigo) => {
         estado: $('#eEstado').value,
         detalle: $('#eDetalle').value.trim()
       });
-      estado.innerHTML = '<span class="ok">Guardado.</span>';
-      setTimeout(() => { location.hash = '#/equipo/' + encodeURIComponent(codigo); }, 400);
+      // Si cambio el codigo, renombrar en cascada: registros y baterias que
+      // apuntan al codigo viejo pasan al nuevo (si no, quedan huerfanos).
+      let avisoRenombre = '';
+      if (codigoNuevo !== equipo.codigo) {
+        const r = await Equipos.renombrar(equipo.id, codigoNuevo);
+        avisoRenombre = ` Renombrado de ${esc(r.anterior)} a ${esc(r.nuevo)}`
+          + (r.cambios ? ` (${r.cambios} registros/baterías actualizados)` : '');
+      }
+      estado.innerHTML = `<span class="ok">Guardado.${avisoRenombre}</span>`;
+      setTimeout(() => { location.hash = '#/equipo/' + encodeURIComponent(codigoNuevo); }, 500);
     } catch (err) {
       estado.innerHTML = `<span class="aviso">Error: ${esc(err.message)}</span>`;
+      if (btn) btn.disabled = false;
     }
   });
 };
