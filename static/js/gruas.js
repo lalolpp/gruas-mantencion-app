@@ -54,8 +54,10 @@ function chipsEquipo(e) {
   const tipoTxt = esElec ? 'Eléctrica' : 'Combustión';
   return `<span class="chip ${marcaCls}">${esc(e.marca || '—')}</span>` +
          `<span class="chip ${tipoCls}">${tipoTxt}</span>` +
-         (flotaDe(e) === FLOTA_ARRENDO ? '<span class="chip chip-arriendo">Arriendo</span>' : '') +
-         (e.detalle ? `<span class="chip marca-otra">${esc(e.detalle)}</span>` : '');
+         (flotaDe(e) === FLOTA_ARRENDO ? '<span class="chip chip-arriendo">Arriendo</span>' : '');
+  // OJO: la nota interna (`e.detalle`) suele ser texto largo. Antes se pintaba
+  // como chip en la tarjeta y desbordaba la grilla; ahora solo se muestra en
+  // la ficha del equipo (Vistas.equipo).
 }
 
 // Modal para ver el detalle completo de un registro (trabajos, repuestos,
@@ -277,8 +279,8 @@ Vistas.equipo = async (el, codigo) => {
         <p class="card-meta">
           Serie: ${esc(equipo.n_serie || '—')} · Depto: ${esc(equipo.dpto || '—')}<br>
           Operador: ${esc(equipo.operador || '—')} · Intervalo: cada ${esc(equipo.intervaloHoras || '—')} h
-          ${equipo.detalle ? '<br>' + esc(equipo.detalle) : ''}
         </p>
+        ${equipo.detalle ? `<div class="ficha-nota"><span class="ficha-nota-etq">Observaciones / nota interna</span>${esc(equipo.detalle)}</div>` : ''}
       </div>
       <div class="ficha-derecha">
         <span class="badge grande ${s.clase}">${esc(s.texto)}</span>
