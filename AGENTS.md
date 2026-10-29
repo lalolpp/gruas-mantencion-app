@@ -209,3 +209,20 @@ Los helpers `esAdmin()` / `esEncargado()` / `puedeEditar()` / `puedeBorrar()` si
 - Fechas seriales Excel (43643) → convertidas a ISO por el importador
 - Filas sin fecha son continuación del registro anterior
 - Empresas normalizadas: ACAM, Linde, Farias, Combustronica, Inter Whells, Luis Suarez, Batrol, SKC
+
+
+## Sesión 2026-10-29 — renombrar equipo/batería y eliminar equipos (v20)
+
+**Renombrar (venía del PR #1, con un bug corregido):**
+- `Vistas.editar` guardaba con `Equipos.upsert` ANTES de `Equipos.renombrar`: al cambiar el código, el nuevo todavía no existía, `upsert` creaba un equipo duplicado y luego `renombrar` fallaba con "Ya existe". Ahora se valida colisión solo contra OTROS equipos (el propio no bloquea), se renombra primero (cascada a `registros.equipo` y `baterias.equipo`) y recién después se guardan los campos con `Equipos.actualizar(id, ...)`.
+- Cambiar solo la flota ya no renombra el código (antes lo prefijaba con AR-/PR-).
+- `db.js`: nuevo `Equipos.actualizar(id, datos)` (actualiza por ID de documento, no por código).
+- Batería: `#bNumero` ya era editable; verificado que al renombrar se conserva el `id`, el área y los `eventos`.
+
+**Eliminar equipos (nuevo):**
+- `db.js`: `Equipos.impacto(codigo)` cuenta registros/baterías; `Equipos.eliminar(id, {cascada})` borra el equipo y, en cascada, sus `registros` (lotes de 400), sus `baterias` y la subcolección `eventos`; invalida cachés.
+- Catálogo: botón **Eliminar equipos** -> modo selección con casillas + barra (seleccionar visibles / quitar selección / cancelar) -> modal de confirmación con la lista, el conteo real de registros y baterías, y casilla opcional "Eliminar también su historial". Sin marcarla, el historial queda huérfano (se avisa en el modal).
+
+**Verificación:** unit test con Firestore simulado 22/22; E2E real en navegador (crear -> renombrar -> colisión -> borrar en cascada -> limpiar) sin restos ZZ_*; `node --check` OK; UTF-8 OK; checksums local==prod 13/13.
+
+**Versiones:** footer v20 · 29-oct-2026, manifest `?v=20`, SW cache `gruas-v17`.

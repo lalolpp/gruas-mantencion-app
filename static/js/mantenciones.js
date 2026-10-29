@@ -416,26 +416,57 @@ Vistas.catalogo = async el => {
     <div class="acciones-catalogo">
       <a class="btn primario" href="#/nuevo-equipo">+ Nuevo equipo</a>
       <button class="btn" id="btnCargarCatalogo">Cargar catálogo inicial</button>
+      ${Auth.puedeBorrar() ? '<button class="btn peligro" id="btnModoBorrar" type="button">Eliminar equipos</button>' : ''}
     </div>
     <p class="muted">Cargar catálogo inicial agrega los equipos base que aún no existen (no duplica los ya creados).</p>
+    <div class="barra-borrar" id="barraBorrar" style="display:none">
+      <b><span id="numSel">0</span> seleccionado(s)</b>
+      <button class="btn mini" id="btnSelTodos" type="button">Seleccionar visibles</button>
+      <button class="btn mini" id="btnSelNinguno" type="button">Quitar selección</button>
+      <button class="btn mini peligro" id="btnEliminarSel" type="button">Eliminar seleccionados</button>
+      <button class="btn mini" id="btnCancelarBorrar" type="button">Cancelar</button>
+    </div>
     <div class="tabla-wrap">
-      <table class="tabla">
-        <thead><tr><th>Código</th><th>Flota</th><th>Categoría</th><th>Marca</th><th>Tipo</th><th>Serie</th><th>Intervalo</th><th>Horóm.</th><th>H.próx</th><th>Depto</th><th>Operador</th><th>Estado</th></tr></thead>
+      <table class="tabla" id="catTabla">
+        <thead><tr><th class="col-sel">Sel</th><th>Código</th><th>Flota</th><th>Categoría</th><th>Marca</th><th>Tipo</th><th>Serie</th><th>Intervalo</th><th>Horóm.</th><th>H.próx</th><th>Depto</th><th>Operador</th><th>Estado</th></tr></thead>
         <tbody id="catBody"></tbody>
       </table>
     </div>
     <div id="catEstado"></div>`;
 
   let filtroActivo = null;
+  let modoBorrar = false;
+  const seleccion = new Set();
+  const equipoPorId = new Map(equipos.map(e => [e.id, e]));
+
+  function listaVisible() {
+    const filtrado = filtroActivo && filtroActivo !== 'todos';
+    return filtrado ? grupos[filtroActivo].lista : equipos;
+  }
+
+  function pintaBarra() {
+    const barra = $('#barraBorrar');
+    if (barra) barra.style.display = modoBorrar ? 'flex' : 'none';
+    const num = $('#numSel');
+    if (num) num.textContent = seleccion.size;
+    const btnDel = $('#btnEliminarSel');
+    if (btnDel) btnDel.disabled = seleccion.size === 0;
+    const tabla = $('#catTabla');
+    if (tabla) tabla.classList.toggle('tabla-seleccion', modoBorrar);
+    const btnModo = $('#btnModoBorrar');
+    if (btnModo) btnModo.textContent = modoBorrar ? 'Salir de selección' : 'Eliminar equipos';
+  }
+
   function pintaTabla() {
     const filtrado = filtroActivo && filtroActivo !== 'todos';
-    const lista = filtrado ? grupos[filtroActivo].lista : equipos;
+    const lista = listaVisible();
     $('#catTitulo').textContent = filtrado
       ? `${grupos[filtroActivo].tit} (${lista.length} de ${equipos.length})`
       : `Catálogo de equipos (${equipos.length})`;
     $('#catBody').innerHTML = lista.map(e => {
       const s = calcularSemaforo(regsPorEquipo[e.codigo] || [], e);
-      return `<tr>
+      return `<tr class="${seleccion.has(e.id) ? 'fila-sel' : ''}">
+            <td class="col-sel"><input type="checkbox" class="selEq" data-id="${esc(e.id)}" ${seleccion.has(e.id) ? 'checked' : ''} aria-label="Seleccionar ${esc(e.codigo)}" /></td>
             <td><a href="#/equipo/${e.codigo}">${esc(e.codigo)}</a></td>
             <td>${flotaDe(e) === FLOTA_ARRENDO ? 'Arriendo' : 'Propia'}</td>
             <td>${esc(e.categoria)}</td>
@@ -461,6 +492,125 @@ Vistas.catalogo = async el => {
     pintaTabla();
   }));
   pintaTabla();
+  pintaBarra();
+
+  // ----- Selección manual de equipos para eliminar -----
+  $('#catBody').addEventListener('change', ev => {
+    const ch = ev.target.closest ? ev.target.closest('.selEq') : null;
+    if (!ch) return;
+    if (ch.checked) seleccion.add(ch.dataset.id);
+    else seleccion.delete(ch.dataset.id);
+    const tr = ch.closest('tr');
+    if (tr) tr.classList.toggle('fila-sel', ch.checked);
+    pintaBarra();
+  });
+
+  const btnModoBorrar = $('#btnModoBorrar');
+  if (btnModoBorrar) btnModoBorrar.addEventListener('click', () => {
+    modoBorrar = !modoBorrar;
+    if (!modoBorrar) seleccion.clear();
+    pintaTabla();
+    pintaBarra();
+  });
+  $('#btnCancelarBorrar').addEventListener('click', () => {
+    modoBorrar = false;
+    seleccion.clear();
+    pintaTabla();
+    pintaBarra();
+  });
+  $('#btnSelTodos').addEventListener('click', () => {
+    listaVisible().forEach(e => seleccion.add(e.id));
+    pintaTabla();
+    pintaBarra();
+  });
+  $('#btnSelNinguno').addEventListener('click', () => {
+    seleccion.clear();
+    pintaTabla();
+    pintaBarra();
+  });
+  $('#btnEliminarSel').addEventListener('click', abrirConfirmarBorrado);
+
+  // Ventana de confirmación: lista los equipos, muestra cuánto historial se
+  // perderá y deja elegir si se borra en cascada o se conserva.
+  async function abrirConfirmarBorrado() {
+    const lista = [...seleccion].map(id => equipoPorId.get(id)).filter(Boolean);
+    if (!lista.length) return;
+    const previo = document.getElementById('modalBorrarEq');
+    if (previo) previo.remove();
+
+    const estado = $('#catEstado');
+    estado.textContent = 'Contando registros y baterías...';
+    const impactos = await Promise.all(lista.map(async e => {
+      try { return await Equipos.impacto(e.codigo); }
+      catch (_) { return { registros: 0, baterias: 0 }; }
+    }));
+    estado.textContent = '';
+    const totalRegs = impactos.reduce((s, x) => s + x.registros, 0);
+    const totalBats = impactos.reduce((s, x) => s + x.baterias, 0);
+
+    const modal = document.createElement('div');
+    modal.id = 'modalBorrarEq';
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-cuerpo" role="dialog" aria-modal="true">
+        <div class="modal-head">
+          <h3 style="margin:0">Eliminar equipos</h3>
+          <button class="btn mini" data-cerrar type="button" aria-label="Cerrar">&times;</button>
+        </div>
+        <p>Se eliminará${lista.length > 1 ? 'n' : ''} <b>${lista.length}</b> equipo${lista.length > 1 ? 's' : ''}:</p>
+        <ul class="lista-borrar">
+          ${lista.map((e, i) => `<li><b>${esc(e.codigo)}</b> · ${esc(e.marca || 'sin marca')} · ${impactos[i].registros} registro(s), ${impactos[i].baterias} batería(s)</li>`).join('')}
+        </ul>
+        <label class="check-linea">
+          <input type="checkbox" id="chkCascada" />
+          <span>Eliminar también su historial: <b>${totalRegs} registro(s)</b> y <b>${totalBats} batería(s)</b>.</span>
+        </label>
+        <p class="muted" style="font-size:.82rem;margin:0 0 10px">
+          Si no marcas la casilla, esos registros y baterías quedan guardados en la base,
+          pero ya no se verán en la app.
+        </p>
+        <div class="modal-pie">
+          <button class="btn" data-cerrar type="button">Cancelar</button>
+          <button class="btn peligro" id="btnConfirmarBorrar" type="button">Eliminar definitivamente</button>
+        </div>
+        <div id="borrarEstado"></div>
+      </div>`;
+    document.body.appendChild(modal);
+
+    const alEsc = ev => { if (ev.key === 'Escape') cerrar(); };
+    const cerrar = () => {
+      document.removeEventListener('keydown', alEsc);
+      modal.remove();
+    };
+    document.addEventListener('keydown', alEsc);
+    modal.querySelectorAll('[data-cerrar]').forEach(b => b.addEventListener('click', cerrar));
+    modal.addEventListener('click', ev => { if (ev.target === modal) cerrar(); });
+
+    $('#btnConfirmarBorrar').addEventListener('click', async () => {
+      const btn = $('#btnConfirmarBorrar');
+      const est = $('#borrarEstado');
+      const cascada = $('#chkCascada').checked;
+      btn.disabled = true;
+      btn.textContent = 'Eliminando...';
+      let equiposBorrados = 0, regsBorrados = 0, batsBorradas = 0;
+      try {
+        for (const e of lista) {
+          const r = await Equipos.eliminar(e.id, { cascada });
+          equiposBorrados++;
+          regsBorrados += r.registros;
+          batsBorradas += r.baterias;
+        }
+        cerrar();
+        toast(`${equiposBorrados} equipo(s) eliminado(s)`
+          + (cascada ? ` · ${regsBorrados} registro(s) y ${batsBorradas} batería(s)` : ' · historial conservado'));
+        Vistas.catalogo(el);
+      } catch (err) {
+        est.innerHTML = `<span class="aviso">Error: ${esc(err.message)}</span>`;
+        btn.disabled = false;
+        btn.textContent = 'Eliminar definitivamente';
+      }
+    });
+  }
 
   $('#btnCargarCatalogo').addEventListener('click', async () => {
     const estado = $('#catEstado');
@@ -724,12 +874,26 @@ Vistas.editar = async (el, codigo) => {
       const flota = $('#eFlota').value;
       let codigoNuevo = $('#eCodigo').value.trim();
       if (!codigoNuevo) throw new Error('El código no puede quedar vacío');
-      // Si el codigo elegido ya existe en la OTRA flota, se prefija (AR10 -> AR-AR10)
-      // igual que al crear equipos, para no chocar.
-      const res = await Equipos.resolverCodigo(codigoNuevo, flota);
-      if (res.error) throw new Error(res.error);
-      codigoNuevo = res.codigo;
-      await Equipos.upsert({
+      // Solo se busca colisión con OTRO equipo: el propio equipo "existe" con
+      // su código actual y no debe bloquear el guardado.
+      const choque = await Equipos.byCodigo(codigoNuevo);
+      if (choque && choque.id !== equipo.id) {
+        // Igual que al crear: si choca con la otra flota se prefija (AR-G5);
+        // si choca dentro de la misma flota es un error.
+        const res = await Equipos.resolverCodigo(codigoNuevo, flota);
+        if (res.error) throw new Error(res.error);
+        codigoNuevo = res.codigo;
+      }
+      // PRIMERO el renombrado en cascada (registros y baterías) y después se
+      // guardan los demás campos sobre el MISMO documento. Al revés, el
+      // código nuevo no existiría todavía y se crearía un equipo duplicado.
+      let avisoRenombre = '';
+      if (codigoNuevo !== equipo.codigo) {
+        const r = await Equipos.renombrar(equipo.id, codigoNuevo);
+        avisoRenombre = ` Renombrado de ${esc(r.anterior)} a ${esc(r.nuevo)}`
+          + (r.cambios ? ` (${r.cambios} registros/baterías actualizados)` : '');
+      }
+      await Equipos.actualizar(equipo.id, {
         codigo: codigoNuevo,
         flota,
         empresaArrendadora: flota === FLOTA_ARRENDO ? $('#eArrendadora').value.trim() : '',
@@ -745,14 +909,6 @@ Vistas.editar = async (el, codigo) => {
         estado: $('#eEstado').value,
         detalle: $('#eDetalle').value.trim()
       });
-      // Si cambio el codigo, renombrar en cascada: registros y baterias que
-      // apuntan al codigo viejo pasan al nuevo (si no, quedan huerfanos).
-      let avisoRenombre = '';
-      if (codigoNuevo !== equipo.codigo) {
-        const r = await Equipos.renombrar(equipo.id, codigoNuevo);
-        avisoRenombre = ` Renombrado de ${esc(r.anterior)} a ${esc(r.nuevo)}`
-          + (r.cambios ? ` (${r.cambios} registros/baterías actualizados)` : '');
-      }
       estado.innerHTML = `<span class="ok">Guardado.${avisoRenombre}</span>`;
       setTimeout(() => { location.hash = '#/equipo/' + encodeURIComponent(codigoNuevo); }, 500);
     } catch (err) {

@@ -75,6 +75,62 @@ const Equipos = {
     }
     return this.crear(datos);
   },
+  // Actualiza un equipo por su ID de documento (no por codigo). Se usa al
+  // editar: buscar por codigo haria que un cambio de codigo cree un duplicado.
+  async actualizar(id, equipo) {
+    const { id: _omitir, ...resto } = equipo || {};
+    await db.collection('equipos').doc(id).set(sinIndefinidos(resto), { merge: true });
+    return id;
+  },
+  // Cuenta cuantos registros y baterias dependen de este equipo. Sirve para
+  // avisar antes de borrar ("se borraran N registros").
+  async impacto(codigo) {
+    const [regs, bats] = await Promise.all([
+      db.collection('registros').where('equipo', '==', codigo).get(),
+      db.collection('baterias').where('equipo', '==', codigo).get()
+    ]);
+    return { registros: regs.size, baterias: bats.size };
+  },
+  // Borra un equipo. Si `cascada` es true borra tambien su historial de
+  // registros y sus baterias (con la subcoleccion eventos). Si es false, esos
+  // documentos quedan huerfanos en la base (ya no se ven en la app).
+  async eliminar(equipoId, opciones) {
+    const cascada = !!(opciones && opciones.cascada);
+    const snap = await db.collection('equipos').doc(equipoId).get();
+    if (!snap.exists) throw new Error('El equipo ya no existe');
+    const codigo = snap.data().codigo;
+    const res = { equipo: codigo, registros: 0, baterias: 0 };
+
+    if (cascada) {
+      // Registros de mantencion (lotes de 400, maximo de Firestore).
+      const regs = await db.collection('registros').where('equipo', '==', codigo).get();
+      let lote = db.batch(), n = 0;
+      for (const d of regs.docs) {
+        lote.delete(d.ref);
+        if (++n === 400) { await lote.commit(); res.registros += n; lote = db.batch(); n = 0; }
+      }
+      if (n > 0) { await lote.commit(); res.registros += n; }
+
+      // Baterias del equipo + su subcoleccion de eventos.
+      const bats = await db.collection('baterias').where('equipo', '==', codigo).get();
+      for (const b of bats.docs) {
+        const evs = await b.ref.collection('eventos').get();
+        let lb = db.batch(), nb = 0;
+        for (const ev of evs.docs) {
+          lb.delete(ev.ref);
+          if (++nb === 400) { await lb.commit(); lb = db.batch(); nb = 0; }
+        }
+        if (nb > 0) await lb.commit();
+        await b.ref.delete();
+        res.baterias++;
+      }
+    }
+
+    await db.collection('equipos').doc(equipoId).delete();
+    Registros.invalidar();
+    Baterias.invalidar();
+    return res;
+  },
   // Renombrar el codigo de un equipo ya creado (p. ej. corregir "A10" -> "AR10").
   // El codigo es la identidad del equipo en toda la app: los registros y las
   // baterias lo guardan como texto ("equipo"), asi que hay que actualizarlos
