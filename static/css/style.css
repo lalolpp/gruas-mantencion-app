@@ -228,7 +228,10 @@ button.kpi:hover { border-color: rgba(124, 58, 237, .45); box-shadow: 0 0 12px r
 
 .grilla {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  /* minmax(0, ...) y no 1fr a secas: 1fr tiene un mínimo de "auto", así que
+     cualquier texto largo dentro de una tarjeta obligaba a la columna a
+     ensancharse y la tarjeta invadía a las vecinas. */
+  grid-template-columns: repeat(auto-fill, minmax(190px, minmax(0, 1fr)));
   gap: 14px;
 }
 
@@ -241,6 +244,12 @@ button.kpi:hover { border-color: rgba(124, 58, 237, .45); box-shadow: 0 0 12px r
   color: inherit;
   box-shadow: 0 1px 6px rgba(28, 33, 64, .05);
   transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+  /* min-width:0 + overflow:break-word: sin esto, un texto largo (p. ej. una
+     observación/note interno) empuja la celda del grid y la tarjeta invade a
+     las vecinas. */
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .card:hover {
   transform: translateY(-3px);
@@ -260,7 +269,15 @@ button.kpi:hover { border-color: rgba(124, 58, 237, .45); box-shadow: 0 0 12px r
   color: var(--violeta);
 }
 .card-sub { font-size: .8rem; margin-top: 4px; }
-.card-meta { font-size: .75rem; color: var(--muted); margin-top: 5px; }
+.card-meta {
+  font-size: .75rem;
+  color: var(--muted);
+  margin-top: 5px;
+  /* El texto largo (depto, operador, horómetro) debe partirse dentro de la
+     tarjeta en vez de ensancharla e invadir las vecinas. */
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
 
 /* ---------- Badges y chips ---------- */
 
@@ -341,6 +358,30 @@ button.kpi:hover { border-color: rgba(124, 58, 237, .45); box-shadow: 0 0 12px r
   .ficha { flex-direction: row; justify-content: space-between; align-items: flex-start; }
 }
 .ficha h2 small { font-weight: 400; color: var(--muted); font-size: .85rem; display: block; }
+/* Nota interna / observaciones del equipo: solo visible en la ficha, con
+   texto largo partido dentro de su propia caja (nunca en las tarjetas). */
+.ficha-nota {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid var(--borde);
+  border-left: 3px solid var(--violeta);
+  border-radius: 10px;
+  font-size: .82rem;
+  color: #334155;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.ficha-nota-etq {
+  display: block;
+  font-size: .7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
 .ficha-derecha {
   text-align: right;
   font-size: .85rem;
