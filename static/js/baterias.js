@@ -220,7 +220,7 @@ Vistas.bateria = async (el, id) => {
       ${Auth.puedeBorrar() ? '<button class="btn" id="btnBorrarBat">Eliminar</button>' : ''}
     </div>
     <div class="tabla-wrap">
-      <table class="tabla">
+      <table class="tabla tabla-fija">
         <tbody>
           <tr><th>N° de serie</th><td>${esc(b.nSerie || '—')}</td></tr>
           <tr><th>Equipo asociado</th><td>${b.equipo ? `<a href="#/equipo/${encodeURIComponent(b.equipo)}">${esc(b.equipo)}</a>` : '—'}</td></tr>

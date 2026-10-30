@@ -226,3 +226,21 @@ Los helpers `esAdmin()` / `esEncargado()` / `puedeEditar()` / `puedeBorrar()` si
 **Verificación:** unit test con Firestore simulado 22/22; E2E real en navegador (crear -> renombrar -> colisión -> borrar en cascada -> limpiar) sin restos ZZ_*; `node --check` OK; UTF-8 OK; checksums local==prod 13/13.
 
 **Versiones:** footer v20 · 29-oct-2026, manifest `?v=20`, SW cache `gruas-v17`.
+## Sesion 2026-10-30 — tarjetas del inicio: sin observaciones y sin desbordes (v21/v22)
+
+**Peticion del usuario:** la observacion/nota interna (texto largo) sobrepasaba la tarjeta e invadia a las vecinas. En la tarjeta solo debe verse: nombre, marca, electrica/combustion, horas de mantencion, horometro y area. El texto largo solo dentro de la ficha del equipo. Vale para PC y movil, sin borrar informacion.
+
+**Causas encontradas:**
+1. **La PR #3 (d31a624) nunca se habia desplegado**: estaba en local pero produccion seguia en v20 (el chip con `e.detalle` seguia en la tarjeta).
+2. **Bug de CSS en esa PR**: `grid-template-columns: repeat(auto-fill, minmax(190px, minmax(0, 1fr)))` anida `minmax` dentro del maximo, lo cual es INVALIDO; el navegador descartaba la regla y la grilla caia a **una sola columna** (medido: `864.8px`). Corregido a `repeat(auto-fill, minmax(190px, 1fr))` + `.card { min-width: 0 }`.
+
+**Cambios (gruas.js, baterias.js, style.css):**
+- Tarjeta del inicio: `Area: <dpto>` y `Horas: <intervalo> · Horóm.: <horometro>` + chips marca/tipo. Sin operador, sin `prox` y **sin nota interna** (la busqueda por operador sigue funcionando).
+- Protecciones: `.card { overflow: hidden; min-width: 0 }`, `.chips/.chip { max-width: 100%; text-overflow: ellipsis }`, `.card-meta { min-width: 0 }`, `.tabla td { word-break }`.
+- Ficha: la nota se muestra en `.ficha-nota` (con `.ficha-nota-etq`) con `white-space: pre-wrap`.
+- Tablas anchas en movil (catalogo 743px y tabla del historial 505px en pantalla de 340px): `@media (max-width: 640px) { .tabla-wrap { overflow-x: auto } }` para que la pagina no se desplace de lado. En PC no aplica (se conserva el encabezado sticky).
+- Ficha de baterias: tabla con `tabla-fija` (`table-layout: fixed`) para que `Observaciones` larga se parta dentro de la celda.
+
+**Verificacion (produccion, navegador, 360px y 900px):** 4 columnas en PC / 1 en movil, 0 solapes, 0 desbordes internos, 0 scroll horizontal, 0 tarjetas con nota; ficha G9/AR12 muestra la nota completa (108/231 chars) sin desborde. Ninguna de las 8 notas reales aparece en las tarjetas. Checksums local==prod 13/13.
+
+**Versiones:** v21 (tarjeta + CSS) y v22 (fix tablas movil), manifest `?v=22`, SW cache `gruas-v19`.

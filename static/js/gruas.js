@@ -47,6 +47,9 @@ function esc(s) {
 }
 
 function chipsEquipo(e) {
+  // OJO: la nota interna (`e.detalle`) suele ser texto largo. NO se pinta aquí:
+  // antes iba como chip en la tarjeta y desbordaba la grilla. Se muestra solo
+  // en la ficha del equipo (Vistas.equipo, bloque .ficha-nota).
   const marca = (e.marca || '').toLowerCase();
   const marcaCls = marca.includes('toyota') ? 'marca-toyota' : marca.includes('linde') ? 'marca-linde' : 'marca-otra';
   const esElec = (e.tipo || '').toLowerCase().includes('electr');
@@ -55,9 +58,6 @@ function chipsEquipo(e) {
   return `<span class="chip ${marcaCls}">${esc(e.marca || '—')}</span>` +
          `<span class="chip ${tipoCls}">${tipoTxt}</span>` +
          (flotaDe(e) === FLOTA_ARRENDO ? '<span class="chip chip-arriendo">Arriendo</span>' : '');
-  // OJO: la nota interna (`e.detalle`) suele ser texto largo. Antes se pintaba
-  // como chip en la tarjeta y desbordaba la grilla; ahora solo se muestra en
-  // la ficha del equipo (Vistas.equipo).
 }
 
 // Modal para ver el detalle completo de un registro (trabajos, repuestos,
@@ -222,14 +222,21 @@ Vistas.inicio = async el => {
       .map(e => {
         const s = calcularSemaforo(regsPorEquipo[e.codigo] || [], e);
         const apagado = e.estado === 'vendida' || e.estado === 'dada de baja';
+        // Tarjeta resumida: solo nombre, marca, tipo, área, horas de
+        // mantención y horómetro. La nota interna/observaciones (texto largo)
+        // NO se pinta aquí: se ve únicamente dentro de la ficha del equipo.
+        const intervalo = e.intervaloHoras != null ? e.intervaloHoras.toLocaleString('es-CL') + ' h' : '—';
+        const horometro = s.horometro != null ? s.horometro.toLocaleString('es-CL') + ' h' : '—';
         return `<a class="card ${apagado ? 'vendida' : ''}" href="#/equipo/${e.codigo}">
           <div class="card-top">
             <span class="codigo">${esc(e.codigo)}</span>
             <span class="badge ${s.clase}">${esc(s.texto)}</span>
           </div>
           <div class="card-sub chips">${chipsEquipo(e)}</div>
-          <div class="card-meta">${esc(e.dpto || '')}${e.operador ? ' · ' + esc(e.operador) : ''}</div>
-          <div class="card-meta">Horómetro: <b>${s.horometro != null ? s.horometro.toLocaleString('es-CL') : '—'}</b>${s.hProx != null ? ` → próx. <b>${s.hProx.toLocaleString('es-CL')}</b> h` : ''}</div>
+          <div class="card-meta">Área: <b>${esc(e.dpto || '—')}</b></div>
+          <div class="card-meta" title="Horas de mantención y horómetro actual">
+            Horas: <b>${intervalo}</b> · Horóm.: <b>${horometro}</b>
+          </div>
         </a>`;
       }).join('');
     $('#grilla').innerHTML = tarjetas || '<p class="muted">Sin resultados en esta flota.</p>';
